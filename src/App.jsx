@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import {
   ShoppingBag,
   Search,
@@ -26,98 +27,22 @@ import {
   QrCode,
   ArrowRight,
   Settings,
-  Tag
+  Tag,
+  RefreshCw
 } from 'lucide-react';
 
-const STORAGE_KEY = 'santo_papel_colorido_v1';
-
-const INITIAL_PRODUCTS = [
-  {
-    id: 'prod-1',
-    nome: 'Topo de Bolo Jardim Encantado',
-    descricao: 'Camadas em papel fotográfico de alta gramatura com detalhes florais e acabamento manual delicado.',
-    preco: 48.0,
-    categoria: 'Topos de Bolo',
-    prazo: '4 dias úteis',
-    imagem: 'https://images.unsplash.com/photo-1535141192574-5d4897c12636?auto=format&fit=crop&w=800&q=80',
-    ativo: true
-  },
-  {
-    id: 'prod-2',
-    nome: 'Caixa Convite Padrinhos Aquarela',
-    descricao: 'Caixa rígida com laço em fita de cetim e cartão interno personalizado para celebrações especiais.',
-    preco: 34.9,
-    categoria: 'Lembrancinhas',
-    prazo: '7 dias úteis',
-    imagem: 'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80',
-    ativo: true
-  },
-  {
-    id: 'prod-3',
-    nome: 'Kit Festa Afetiva (25 peças)',
-    descricao: 'Conjunto coordenado com topper de bolo, tags para doces, forminhas e bandeirolas artesanais.',
-    preco: 129.0,
-    categoria: 'Kits Festa',
-    prazo: '6 dias úteis',
-    imagem: 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?auto=format&fit=crop&w=800&q=80',
-    ativo: true
-  },
-  {
-    id: 'prod-4',
-    nome: 'Cartões de Agradecimento & Tags (50 un.)',
-    descricao: 'Impressão nítida em papel texturizado ideal para acompanhar encomendas, presentes e kits criativos.',
-    preco: 42.0,
-    categoria: 'Papelaria Corporativa',
-    prazo: '3 dias úteis',
-    imagem: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?auto=format&fit=crop&w=800&q=80',
-    ativo: true
-  }
-];
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 const INITIAL_CONFIG = {
   nomeLoja: 'Santo Papel Colorido',
   subtitulo: 'Detalhes que encantam',
   whatsapp: '5512999999999',
   chavePix: 'contato@santopapelcolorido.com.br',
-  freteBase: 16.0,
-  freteGratisAcima: 180.0
+  freteBase: 15.0,
+  freteGratisAcima: 150.0
 };
-
-const INITIAL_ORDERS = [
-  {
-    id: 'PED-1042',
-    clienteNome: 'Camila Andrade',
-    clienteWhatsapp: '(12) 99123-4567',
-    clienteCep: '12300-000',
-    clienteEndereco: 'Rua das Flores, 145 - Centro, Jacareí - SP',
-    itens: [
-      { id: 'prod-1', nome: 'Topo de Bolo Jardim Encantado', quantidade: 1, preco: 48.0 }
-    ],
-    subtotal: 48.0,
-    frete: 16.0,
-    total: 64.0,
-    status: 'Em Produção',
-    codigoRastreio: '',
-    criadoEm: 'Hoje, 10:15'
-  },
-  {
-    id: 'PED-1041',
-    clienteNome: 'Fernanda Oliveira',
-    clienteWhatsapp: '(11) 98877-6655',
-    clienteCep: '01310-100',
-    clienteEndereco: 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP',
-    itens: [
-      { id: 'prod-3', nome: 'Kit Festa Afetiva (25 peças)', quantidade: 1, preco: 129.0 },
-      { id: 'prod-4', nome: 'Cartões de Agradecimento & Tags (50 un.)', quantidade: 1, preco: 42.0 }
-    ],
-    subtotal: 171.0,
-    frete: 16.0,
-    total: 187.0,
-    status: 'Enviado',
-    codigoRastreio: 'AA987654321BR',
-    criadoEm: 'Ontem, 16:40'
-  }
-];
 
 const STATUS_STEPS = ['Aguardando Pagamento', 'Em Produção', 'Enviado', 'Concluído'];
 const CATEGORIES = ['Todos', 'Topos de Bolo', 'Lembrancinhas', 'Kits Festa', 'Papelaria Corporativa'];
@@ -174,39 +99,13 @@ function BrandLogo({ size = 'md' }) {
 }
 
 export default function App() {
-  const [state, setState] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return {
-          products: Array.isArray(parsed.products) ? parsed.products : INITIAL_PRODUCTS,
-          orders: Array.isArray(parsed.orders) ? parsed.orders : INITIAL_ORDERS,
-          config: { ...INITIAL_CONFIG, ...(parsed.config || {}) }
-        };
-      }
-    } catch {
-      // ignora erro de leitura inicial
-    }
-    return {
-      products: INITIAL_PRODUCTS,
-      orders: INITIAL_ORDERS,
-      config: INITIAL_CONFIG
-    };
-  });
+  const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [config, setConfig] = useState(INITIAL_CONFIG);
+  const [loadingData, setLoadingData] = useState(true);
+  const [savingAction, setSavingAction] = useState(false);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      // ignora erro de escrita
-    }
-  }, [state]);
-
-  // Navegação principal: 'vitrine' | 'rastreio' | 'admin'
   const [activeTab, setActiveTab] = useState('vitrine');
-
-  // Vitrine
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState([]);
@@ -215,7 +114,6 @@ export default function App() {
   const [freteCalculado, setFreteCalculado] = useState(null);
   const [toastMsg, setToastMsg] = useState('');
 
-  // Checkout & Pix
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [checkoutForm, setCheckoutForm] = useState({
     clienteNome: '',
@@ -226,12 +124,10 @@ export default function App() {
   const [pendingOrder, setPendingOrder] = useState(null);
   const [copiedPix, setCopiedPix] = useState(false);
 
-  // Rastreio do cliente
   const [trackingQuery, setTrackingQuery] = useState('');
   const [foundOrder, setFoundOrder] = useState(null);
   const [trackingSearched, setTrackingSearched] = useState(false);
 
-  // Admin
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [adminError, setAdminError] = useState('');
@@ -250,8 +146,99 @@ export default function App() {
     setToastMsg(msg);
     setTimeout(() => {
       setToastMsg((prev) => (prev === msg ? '' : prev));
-    }, 2800);
+    }, 3000);
   };
+
+  const loadAllFromSupabase = useCallback(async () => {
+    if (!supabase) {
+      setLoadingData(false);
+      return;
+    }
+    setLoadingData(true);
+    try {
+      const [prodRes, ordRes, itemsRes, cfgRes] = await Promise.all([
+        supabase.from('produtos').select('*').order('criado_em', { ascending: false }),
+        supabase.from('pedidos').select('*').order('criado_em', { ascending: false }),
+        supabase.from('itens_pedido').select('*'),
+        supabase.from('config_loja').select('*').eq('id', 1).single()
+      ]);
+
+      if (prodRes.data) {
+        setProducts(
+          prodRes.data.map((p) => ({
+            id: p.id,
+            nome: p.nome,
+            descricao: p.descricao || '',
+            preco: Number(p.preco),
+            categoria: p.categoria,
+            prazo: p.prazo_producao || '5 dias úteis',
+            imagem:
+              p.imagem_url ||
+              'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80',
+            ativo: p.ativo !== false
+          }))
+        );
+      }
+
+      if (ordRes.data) {
+        const allItems = itemsRes.data || [];
+        setOrders(
+          ordRes.data.map((o) => {
+            const orderItems = allItems
+              .filter((it) => it.pedido_id === o.id)
+              .map((it) => ({
+                id: it.produto_id || it.id,
+                nome: it.nome_produto,
+                quantidade: it.quantidade,
+                preco: Number(it.preco_unitario)
+              }));
+
+            return {
+              dbId: o.id,
+              id: o.codigo_pedido,
+              clienteNome: o.cliente_nome,
+              clienteWhatsapp: o.cliente_whatsapp,
+              clienteCep: o.cliente_cep,
+              clienteEndereco: o.cliente_endereco,
+              itens: orderItems,
+              subtotal: Number(o.valor_produtos),
+              frete: Number(o.valor_frete),
+              total: Number(o.valor_total),
+              status: o.status || 'Aguardando Pagamento',
+              codigoRastreio: o.codigo_rastreio || '',
+              criadoEm: o.criado_em
+                ? new Date(o.criado_em).toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : 'Recente'
+            };
+          })
+        );
+      }
+
+      if (cfgRes.data) {
+        setConfig((prev) => ({
+          ...prev,
+          nomeLoja: cfgRes.data.nome_loja || prev.nomeLoja,
+          subtitulo: cfgRes.data.subtitulo || prev.subtitulo,
+          whatsapp: cfgRes.data.whatsapp || prev.whatsapp,
+          freteBase: Number(cfgRes.data.frete_fixo ?? prev.freteBase),
+          freteGratisAcima: Number(cfgRes.data.frete_gratis_acima ?? prev.freteGratisAcima)
+        }));
+      }
+    } catch {
+      showToast('Erro ao carregar dados do Supabase');
+    } finally {
+      setLoadingData(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAllFromSupabase();
+  }, [loadAllFromSupabase]);
 
   const subtotal = useMemo(
     () => cart.reduce((acc, item) => acc + item.preco * item.quantidade, 0),
@@ -260,16 +247,16 @@ export default function App() {
 
   const freteAtual = useMemo(() => {
     if (cart.length === 0) return 0;
-    if (subtotal >= state.config.freteGratisAcima) return 0;
+    if (subtotal >= config.freteGratisAcima) return 0;
     if (freteCalculado !== null) return freteCalculado;
-    return state.config.freteBase;
-  }, [cart.length, subtotal, state.config.freteGratisAcima, state.config.freteBase, freteCalculado]);
+    return config.freteBase;
+  }, [cart.length, subtotal, config.freteGratisAcima, config.freteBase, freteCalculado]);
 
   const totalCarrinho = subtotal + freteAtual;
   const totalItensCarrinho = cart.reduce((acc, item) => acc + item.quantidade, 0);
 
   const filteredProducts = useMemo(() => {
-    return state.products.filter((prod) => {
+    return products.filter((prod) => {
       if (!prod.ativo) return false;
       const matchesCategory = selectedCategory === 'Todos' || prod.categoria === selectedCategory;
       const term = searchTerm.trim().toLowerCase();
@@ -280,16 +267,16 @@ export default function App() {
         prod.categoria.toLowerCase().includes(term);
       return matchesCategory && matchesSearch;
     });
-  }, [state.products, selectedCategory, searchTerm]);
+  }, [products, selectedCategory, searchTerm]);
 
   const metrics = useMemo(() => {
-    const validOrders = state.orders.filter((o) => o.status !== 'Aguardando Pagamento');
+    const validOrders = orders.filter((o) => o.status !== 'Aguardando Pagamento');
     const faturamento = validOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
     const vendasCount = validOrders.length;
     const ticketMedio = vendasCount > 0 ? faturamento / vendasCount : 0;
-    const emProducao = state.orders.filter((o) => o.status === 'Em Produção').length;
+    const emProducao = orders.filter((o) => o.status === 'Em Produção').length;
     return { faturamento, vendasCount, ticketMedio, emProducao };
-  }, [state.orders]);
+  }, [orders]);
 
   const handleAddToCart = (product) => {
     setCart((prev) => {
@@ -334,14 +321,14 @@ export default function App() {
       showToast('Digite um CEP válido com 8 números');
       return;
     }
-    if (subtotal >= state.config.freteGratisAcima) {
+    if (subtotal >= config.freteGratisAcima) {
       setFreteCalculado(0);
       showToast('Parabéns! Você ganhou frete grátis');
       return;
     }
     const lastDigit = Number(cleanCep[cleanCep.length - 1]);
     const variacao = lastDigit % 2 === 0 ? 0 : 4;
-    const valorFinal = Number(state.config.freteBase) + variacao;
+    const valorFinal = Number(config.freteBase) + variacao;
     setFreteCalculado(valorFinal);
     showToast(`Frete calculado para CEP ${cepInput}: ${formatBRL(valorFinal)}`);
   };
@@ -356,63 +343,110 @@ export default function App() {
     setIsCheckoutOpen(true);
   };
 
-  const handleCreatePixOrder = (e) => {
+  const handleCreatePixOrder = async (e) => {
     e.preventDefault();
     if (!checkoutForm.clienteNome.trim() || !checkoutForm.clienteWhatsapp.trim()) {
       showToast('Preencha nome e WhatsApp para gerar o pedido');
       return;
     }
+    if (!supabase) {
+      showToast('Configure as chaves do Supabase na Vercel primeiro');
+      return;
+    }
 
+    setSavingAction(true);
     const randomNum = Math.floor(1050 + Math.random() * 8900);
-    const newOrder = {
-      id: `PED-${randomNum}`,
-      clienteNome: checkoutForm.clienteNome.trim(),
-      clienteWhatsapp: checkoutForm.clienteWhatsapp.trim(),
-      clienteCep: checkoutForm.clienteCep.trim() || '12300-000',
-      clienteEndereco: checkoutForm.clienteEndereco.trim() || 'Retirada / A combinar',
-      itens: cart.map((item) => ({
-        id: item.id,
-        nome: item.nome,
-        quantidade: item.quantidade,
-        preco: item.preco
-      })),
-      subtotal,
-      frete: freteAtual,
-      total: totalCarrinho,
-      status: 'Aguardando Pagamento',
-      codigoRastreio: '',
-      criadoEm: 'Agora mesmo'
-    };
+    const codigoPedido = `PED-${randomNum}`;
 
-    setState((prev) => ({
-      ...prev,
-      orders: [newOrder, ...prev.orders]
-    }));
-    setPendingOrder(newOrder);
-    setCart([]);
-    setFreteCalculado(null);
+    try {
+      const { data: insertedOrder, error: orderErr } = await supabase
+        .from('pedidos')
+        .insert({
+          codigo_pedido: codigoPedido,
+          cliente_nome: checkoutForm.clienteNome.trim(),
+          cliente_whatsapp: checkoutForm.clienteWhatsapp.trim(),
+          cliente_cep: checkoutForm.clienteCep.trim() || '12300-000',
+          cliente_endereco: checkoutForm.clienteEndereco.trim() || 'Retirada / A combinar',
+          valor_produtos: subtotal,
+          valor_frete: freteAtual,
+          valor_total: totalCarrinho,
+          status: 'Aguardando Pagamento'
+        })
+        .select()
+        .single();
+
+      if (orderErr) throw orderErr;
+
+      const itensPayload = cart.map((item) => ({
+        pedido_id: insertedOrder.id,
+        produto_id: item.id,
+        nome_produto: item.nome,
+        quantidade: item.quantidade,
+        preco_unitario: item.preco
+      }));
+
+      await supabase.from('itens_pedido').insert(itensPayload);
+
+      const newOrderObj = {
+        dbId: insertedOrder.id,
+        id: codigoPedido,
+        clienteNome: insertedOrder.cliente_nome,
+        clienteWhatsapp: insertedOrder.cliente_whatsapp,
+        clienteCep: insertedOrder.cliente_cep,
+        clienteEndereco: insertedOrder.cliente_endereco,
+        itens: cart.map((i) => ({
+          id: i.id,
+          nome: i.nome,
+          quantidade: i.quantidade,
+          preco: i.preco
+        })),
+        subtotal,
+        frete: freteAtual,
+        total: totalCarrinho,
+        status: 'Aguardando Pagamento',
+        codigoRastreio: '',
+        criadoEm: 'Agora mesmo'
+      };
+
+      setOrders((prev) => [newOrderObj, ...prev]);
+      setPendingOrder(newOrderObj);
+      setCart([]);
+      setFreteCalculado(null);
+      showToast(`Pedido ${codigoPedido} salvo no banco de dados!`);
+    } catch {
+      showToast('Não foi possível salvar o pedido no Supabase');
+    } finally {
+      setSavingAction(false);
+    }
   };
 
-  const handleSimulatePixPaid = () => {
-    if (!pendingOrder) return;
-    setState((prev) => ({
-      ...prev,
-      orders: prev.orders.map((ord) =>
-        ord.id === pendingOrder.id ? { ...ord, status: 'Em Produção' } : ord
-      )
-    }));
-    setPendingOrder((prev) => (prev ? { ...prev, status: 'Em Produção' } : null));
-    showToast(`Pagamento do pedido ${pendingOrder.id} aprovado! Entrou em produção.`);
+  const handleSimulatePixPaid = async () => {
+    if (!pendingOrder || !supabase) return;
+    setSavingAction(true);
+    try {
+      await supabase
+        .from('pedidos')
+        .update({ status: 'Em Produção' })
+        .eq('codigo_pedido', pendingOrder.id);
+
+      setOrders((prev) =>
+        prev.map((ord) => (ord.id === pendingOrder.id ? { ...ord, status: 'Em Produção' } : ord))
+      );
+      setPendingOrder((prev) => (prev ? { ...prev, status: 'Em Produção' } : null));
+      showToast(`Pagamento do pedido ${pendingOrder.id} aprovado!`);
+    } finally {
+      setSavingAction(false);
+    }
   };
 
   const handleCopyPix = () => {
-    const pixCode = `00020126580014BR.GOV.BCB.PIX0136${state.config.chavePix}5204000053039865802BR5920SANTO PAPEL COLORIDO6009JACAREI62070503***6304`;
+    const pixCode = `00020126580014BR.GOV.BCB.PIX0136${config.chavePix}5204000053039865802BR5920SANTO PAPEL COLORIDO6009JACAREI62070503***6304`;
     navigator.clipboard?.writeText(pixCode).catch(() => {});
     setCopiedPix(true);
     setTimeout(() => setCopiedPix(false), 2000);
   };
 
-  const handleSearchOrder = (e) => {
+  const handleSearchOrder = async (e) => {
     e.preventDefault();
     const term = trackingQuery.trim().toLowerCase();
     setTrackingSearched(true);
@@ -420,7 +454,7 @@ export default function App() {
       setFoundOrder(null);
       return;
     }
-    const match = state.orders.find(
+    const match = orders.find(
       (o) =>
         o.id.toLowerCase() === term ||
         o.id.toLowerCase().includes(term) ||
@@ -440,82 +474,91 @@ export default function App() {
     }
   };
 
-  const handleOrderStatusChange = (orderId, nextStatus) => {
-    setState((prev) => ({
-      ...prev,
-      orders: prev.orders.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o))
-    }));
+  const handleOrderStatusChange = async (orderId, nextStatus) => {
+    if (!supabase) return;
+    await supabase.from('pedidos').update({ status: nextStatus }).eq('codigo_pedido', orderId);
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o))
+    );
     if (foundOrder?.id === orderId) {
       setFoundOrder((prev) => (prev ? { ...prev, status: nextStatus } : null));
     }
     showToast(`Status do pedido ${orderId} atualizado para "${nextStatus}"`);
   };
 
-  const handleTrackingCodeChange = (orderId, code) => {
-    setState((prev) => ({
-      ...prev,
-      orders: prev.orders.map((o) => (o.id === orderId ? { ...o, codigoRastreio: code } : o))
-    }));
+  const handleTrackingCodeChange = async (orderId, code) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, codigoRastreio: code } : o))
+    );
     if (foundOrder?.id === orderId) {
       setFoundOrder((prev) => (prev ? { ...prev, codigoRastreio: code } : null));
     }
+    if (supabase) {
+      await supabase.from('pedidos').update({ codigo_rastreio: code }).eq('codigo_pedido', orderId);
+    }
   };
 
-  const handleSaveProduct = (e) => {
+  const handleSaveProduct = async (e) => {
     e.preventDefault();
     const precoNum = parseFloat(String(newProduct.preco).replace(',', '.'));
     if (!newProduct.nome.trim() || isNaN(precoNum) || precoNum <= 0) {
       showToast('Preencha nome e preço válido do produto');
       return;
     }
-
-    if (editingProductId) {
-      setState((prev) => ({
-        ...prev,
-        products: prev.products.map((p) =>
-          p.id === editingProductId
-            ? {
-                ...p,
-                nome: newProduct.nome.trim(),
-                descricao: newProduct.descricao.trim() || 'Peça artesanal personalizada.',
-                preco: precoNum,
-                categoria: newProduct.categoria,
-                prazo: newProduct.prazo || '5 dias úteis',
-                imagem: newProduct.imagem.trim() || p.imagem
-              }
-            : p
-        )
-      }));
-      setEditingProductId(null);
-      showToast('Produto atualizado na vitrine!');
-    } else {
-      const created = {
-        id: `prod-${Date.now()}`,
-        nome: newProduct.nome.trim(),
-        descricao: newProduct.descricao.trim() || 'Peça artesanal personalizada.',
-        preco: precoNum,
-        categoria: newProduct.categoria,
-        prazo: newProduct.prazo || '5 dias úteis',
-        imagem:
-          newProduct.imagem.trim() ||
-          'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80',
-        ativo: true
-      };
-      setState((prev) => ({
-        ...prev,
-        products: [created, ...prev.products]
-      }));
-      showToast('Novo produto cadastrado na vitrine!');
+    if (!supabase) {
+      showToast('Supabase não conectado');
+      return;
     }
 
-    setNewProduct({
-      nome: '',
-      descricao: '',
-      preco: '',
-      categoria: 'Topos de Bolo',
-      prazo: '5 dias úteis',
-      imagem: 'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80'
-    });
+    setSavingAction(true);
+    try {
+      if (editingProductId) {
+        const { error } = await supabase
+          .from('produtos')
+          .update({
+            nome: newProduct.nome.trim(),
+            descricao: newProduct.descricao.trim() || 'Peça artesanal personalizada.',
+            preco: precoNum,
+            categoria: newProduct.categoria,
+            prazo_producao: newProduct.prazo || '5 dias úteis',
+            imagem_url: newProduct.imagem.trim()
+          })
+          .eq('id', editingProductId);
+
+        if (error) throw error;
+        setEditingProductId(null);
+        showToast('Produto atualizado no Supabase!');
+      } else {
+        const { error } = await supabase.from('produtos').insert({
+          nome: newProduct.nome.trim(),
+          descricao: newProduct.descricao.trim() || 'Peça artesanal personalizada.',
+          preco: precoNum,
+          categoria: newProduct.categoria,
+          prazo_producao: newProduct.prazo || '5 dias úteis',
+          imagem_url:
+            newProduct.imagem.trim() ||
+            'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80',
+          ativo: true
+        });
+
+        if (error) throw error;
+        showToast('Produto salvo no Supabase!');
+      }
+
+      setNewProduct({
+        nome: '',
+        descricao: '',
+        preco: '',
+        categoria: 'Topos de Bolo',
+        prazo: '5 dias úteis',
+        imagem: 'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80'
+      });
+      await loadAllFromSupabase();
+    } catch {
+      showToast('Erro ao salvar produto no Supabase');
+    } finally {
+      setSavingAction(false);
+    }
   };
 
   const handleStartEditProduct = (prod) => {
@@ -530,11 +573,27 @@ export default function App() {
     });
   };
 
-  const handleToggleProductActive = (id) => {
-    setState((prev) => ({
-      ...prev,
-      products: prev.products.map((p) => (p.id === id ? { ...p, ativo: !p.ativo } : p))
-    }));
+  const handleToggleProductActive = async (prod) => {
+    if (!supabase) return;
+    const nextActive = !prod.ativo;
+    await supabase.from('produtos').update({ ativo: nextActive }).eq('id', prod.id);
+    setProducts((prev) => prev.map((p) => (p.id === prod.id ? { ...p, ativo: nextActive } : p)));
+  };
+
+  const handleSaveConfig = async (updatedFields) => {
+    const nextCfg = { ...config, ...updatedFields };
+    setConfig(nextCfg);
+    if (supabase) {
+      await supabase
+        .from('config_loja')
+        .update({
+          nome_loja: nextCfg.nomeLoja,
+          subtitulo: nextCfg.subtitulo,
+          frete_fixo: nextCfg.freteBase,
+          frete_gratis_acima: nextCfg.freteGratisAcima
+        })
+        .eq('id', 1);
+    }
   };
 
   return (
@@ -549,7 +608,6 @@ export default function App() {
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Dancing+Script:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
       `}</style>
 
-      {/* Toast de feedback */}
       {toastMsg && (
         <div className="fixed bottom-5 right-5 z-50 bg-[#4A3B32] text-[#FAF6F2] px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 text-sm border border-[#C99649]/40">
           <Sparkles className="w-4 h-4 text-[#C99649] shrink-0" />
@@ -557,7 +615,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Barra Superior / Navegação */}
+      {!supabase && (
+        <div className="bg-amber-100 border-b border-amber-300 text-amber-950 text-xs py-2 px-4 text-center">
+          Atenção: configure <strong>VITE_SUPABASE_URL</strong> e <strong>VITE_SUPABASE_ANON_KEY</strong> nas Environment Variables da Vercel e faça Redeploy para salvar pedidos na nuvem.
+        </div>
+      )}
+
       <header className="sticky top-0 z-30 bg-[#FAF6F2]/95 backdrop-blur border-b border-[#E8DDD4]">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <button
@@ -625,10 +688,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* ABA 1: VITRINE */}
       {activeTab === 'vitrine' && (
         <main className="flex-1">
-          {/* Banner Editorial */}
           <section className="max-w-6xl mx-auto px-4 pt-6 pb-4">
             <div className="rounded-3xl bg-gradient-to-r from-[#F5EAE3] via-[#FAF6F2] to-[#EAF1F3] border border-[#E6D8CC] p-6 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="max-w-xl space-y-3">
@@ -640,17 +701,14 @@ export default function App() {
                   className="text-3xl sm:text-5xl font-semibold text-[#4A3B32] leading-tight"
                   style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
                 >
-                  {state.config.nomeLoja} — {state.config.subtitulo}
+                  {config.nomeLoja} — {config.subtitulo}
                 </h1>
                 <p className="text-sm sm:text-base text-[#6B584C] leading-relaxed">
                   Escolha suas peças, calcule o frete, finalize o pagamento com Pix e acompanhe cada etapa da produção até a entrega em um só lugar.
                 </p>
                 <div className="pt-1 flex flex-wrap items-center gap-3 text-xs text-[#6B584C]">
                   <span className="bg-white/80 border border-[#E6D8CC] px-3 py-1.5 rounded-lg">
-                    Frete grátis acima de <strong>{formatBRL(state.config.freteGratisAcima)}</strong>
-                  </span>
-                  <span className="bg-white/80 border border-[#E6D8CC] px-3 py-1.5 rounded-lg">
-                    Pedido exemplo para testar rastreio: <strong>PED-1041</strong>
+                    Frete grátis acima de <strong>{formatBRL(config.freteGratisAcima)}</strong>
                   </span>
                 </div>
               </div>
@@ -669,7 +727,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* Filtros e Busca */}
           <section className="max-w-6xl mx-auto px-4 py-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-2 overflow-x-auto pb-1">
@@ -702,21 +759,17 @@ export default function App() {
             </div>
           </section>
 
-          {/* Grade de Produtos */}
           <section className="max-w-6xl mx-auto px-4 pb-14">
-            {filteredProducts.length === 0 ? (
+            {loadingData ? (
+              <div className="bg-white rounded-2xl border border-[#E5D7CA] p-10 text-center text-sm text-[#6B584C]">
+                Carregando catálogo do ateliê...
+              </div>
+            ) : filteredProducts.length === 0 ? (
               <div className="bg-white rounded-2xl border border-[#E5D7CA] p-10 text-center space-y-2">
-                <p className="font-semibold text-base">Nenhum item encontrado com esse filtro.</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedCategory('Todos');
-                    setSearchTerm('');
-                  }}
-                  className="text-sm text-[#D48C84] font-semibold underline"
-                >
-                  Limpar filtros
-                </button>
+                <p className="font-semibold text-base">Nenhum produto ativo encontrado.</p>
+                <p className="text-xs text-[#6B584C]">
+                  Cadastre seus primeiros itens na aba <strong>Painel Ateliê &gt; Produtos</strong>.
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -778,7 +831,6 @@ export default function App() {
         </main>
       )}
 
-      {/* ABA 2: ACOMPANHAR PEDIDO */}
       {activeTab === 'rastreio' && (
         <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-10">
           <div className="bg-white rounded-3xl border border-[#E6D8CC] p-6 sm:p-8 shadow-sm space-y-6">
@@ -793,7 +845,7 @@ export default function App() {
                 Acompanhar meu Pedido
               </h1>
               <p className="text-sm text-[#6B584C]">
-                Digite o código do pedido (ex.: <strong>PED-1041</strong> ou <strong>PED-1042</strong>) ou o WhatsApp cadastrado.
+                Digite o código do pedido (ex.: <strong>PED-1050</strong>) ou o WhatsApp cadastrado.
               </p>
             </div>
 
@@ -802,7 +854,7 @@ export default function App() {
                 type="text"
                 value={trackingQuery}
                 onChange={(e) => setTrackingQuery(e.target.value)}
-                placeholder="Ex.: PED-1041 ou (11) 98877-6655"
+                placeholder="Ex.: PED-1050 ou (12) 99999-0000"
                 className="flex-1 px-4 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm focus:outline-none focus:border-[#6A8E96]"
               />
               <button
@@ -816,7 +868,7 @@ export default function App() {
 
             {trackingSearched && !foundOrder && (
               <div className="p-4 rounded-2xl bg-[#FDF4F2] border border-[#F0CFC8] text-sm text-[#8F4A42]">
-                Nenhum pedido encontrado para &ldquo;{trackingQuery}&rdquo;. Tente consultar <strong>PED-1041</strong> ou faça um pedido na vitrine.
+                Nenhum pedido encontrado para &ldquo;{trackingQuery}&rdquo;.
               </div>
             )}
 
@@ -834,7 +886,6 @@ export default function App() {
                   </span>
                 </div>
 
-                {/* Linha do tempo das 4 etapas */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {STATUS_STEPS.map((step, idx) => {
                     const currentIdx = STATUS_STEPS.indexOf(foundOrder.status);
@@ -889,7 +940,6 @@ export default function App() {
         </main>
       )}
 
-      {/* ABA 3: PAINEL ADMINISTRATIVO */}
       {activeTab === 'admin' && (
         <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8">
           {!isAdminAuthenticated ? (
@@ -934,21 +984,29 @@ export default function App() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Cabeçalho Admin */}
               <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#E6D8CC]">
                 <div>
                   <h1
                     className="text-2xl sm:text-3xl font-semibold text-[#4A3B32]"
                     style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
                   >
-                    Painel Administrativo — {state.config.nomeLoja}
+                    Painel Administrativo — {config.nomeLoja}
                   </h1>
                   <p className="text-xs text-[#6B584C]">
-                    Acompanhe métricas, atualize status/rastreio dos pedidos e cadastre produtos.
+                    Dados sincronizados em tempo real com o Supabase.
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={loadAllFromSupabase}
+                    className="px-3 py-2 rounded-xl text-xs font-semibold bg-[#FAF6F2] text-[#4A3B32] border border-[#E5D7CA] flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Atualizar</span>
+                  </button>
+
                   {[
                     { id: 'resumo', label: 'Visão Geral & Pedidos', icon: TrendingUp },
                     { id: 'produtos', label: 'Produtos', icon: Tag },
@@ -983,7 +1041,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Cards de Métricas */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white p-5 rounded-2xl border border-[#E6D8CC]">
                   <div className="flex items-center justify-between text-xs text-[#6B584C] mb-1">
@@ -1018,62 +1075,64 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Seção Pedidos */}
               {adminSection === 'resumo' && (
                 <div className="bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-4">
                   <h2 className="text-lg font-bold text-[#4A3B32]">Pedidos e Rastreio</h2>
 
-                  <div className="space-y-3">
-                    {state.orders.map((order) => (
-                      <div
-                        key={order.id}
-                        className="p-4 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0] flex flex-col lg:flex-row lg:items-center justify-between gap-4"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-sm text-[#4A3B32]">{order.id}</span>
-                            <span className="text-xs text-[#8B7669]">• {order.criadoEm}</span>
-                            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white border border-[#DFCFC1]">
-                              {order.status}
-                            </span>
+                  {orders.length === 0 ? (
+                    <p className="text-sm text-[#6B584C]">Nenhum pedido registrado ainda.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {orders.map((order) => (
+                        <div
+                          key={order.id}
+                          className="p-4 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0] flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-sm text-[#4A3B32]">{order.id}</span>
+                              <span className="text-xs text-[#8B7669]">• {order.criadoEm}</span>
+                              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white border border-[#DFCFC1]">
+                                {order.status}
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium text-[#4A3B32]">
+                              {order.clienteNome} — {order.clienteWhatsapp}
+                            </p>
+                            <p className="text-xs text-[#6B584C]">
+                              {order.itens.map((i) => `${i.quantidade}x ${i.nome}`).join(', ')}{' '}
+                              <strong>• Total: {formatBRL(order.total)}</strong>
+                            </p>
                           </div>
-                          <p className="text-sm font-medium text-[#4A3B32]">
-                            {order.clienteNome} — {order.clienteWhatsapp}
-                          </p>
-                          <p className="text-xs text-[#6B584C]">
-                            {order.itens.map((i) => `${i.quantidade}x ${i.nome}`).join(', ')} •{' '}
-                            <strong>Total: {formatBRL(order.total)}</strong>
-                          </p>
-                        </div>
 
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                          <select
-                            value={order.status}
-                            onChange={(e) => handleOrderStatusChange(order.id, e.target.value)}
-                            className="px-3 py-2 rounded-xl border border-[#DFCFC1] bg-white text-xs font-medium text-[#4A3B32]"
-                          >
-                            {STATUS_STEPS.map((st) => (
-                              <option key={st} value={st}>
-                                {st}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            <select
+                              value={order.status}
+                              onChange={(e) => handleOrderStatusChange(order.id, e.target.value)}
+                              className="px-3 py-2 rounded-xl border border-[#DFCFC1] bg-white text-xs font-medium text-[#4A3B32]"
+                            >
+                              {STATUS_STEPS.map((st) => (
+                                <option key={st} value={st}>
+                                  {st}
+                                </option>
+                              ))}
+                            </select>
 
-                          <input
-                            type="text"
-                            value={order.codigoRastreio || ''}
-                            onChange={(e) => handleTrackingCodeChange(order.id, e.target.value)}
-                            placeholder="Código de rastreio"
-                            className="px-3 py-2 rounded-xl border border-[#DFCFC1] bg-white text-xs text-[#4A3B32] w-full sm:w-44"
-                          />
+                            <input
+                              type="text"
+                              value={order.codigoRastreio || ''}
+                              onChange={(e) => handleTrackingCodeChange(order.id, e.target.value)}
+                              placeholder="Código de rastreio"
+                              className="px-3 py-2 rounded-xl border border-[#DFCFC1] bg-white text-xs text-[#4A3B32] w-full sm:w-44"
+                            />
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Seção Produtos */}
               {adminSection === 'produtos' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <form
@@ -1158,9 +1217,14 @@ export default function App() {
                     <div className="flex gap-2 pt-1">
                       <button
                         type="submit"
-                        className="flex-1 bg-[#D48C84] hover:bg-[#c37971] text-white py-2.5 rounded-xl text-xs font-semibold transition"
+                        disabled={savingAction}
+                        className="flex-1 bg-[#D48C84] hover:bg-[#c37971] text-white py-2.5 rounded-xl text-xs font-semibold transition disabled:opacity-60"
                       >
-                        {editingProductId ? 'Salvar Alterações' : 'Adicionar à Vitrine'}
+                        {savingAction
+                          ? 'Salvando...'
+                          : editingProductId
+                            ? 'Salvar Alterações'
+                            : 'Adicionar à Vitrine'}
                       </button>
                       {editingProductId && (
                         <button
@@ -1187,52 +1251,55 @@ export default function App() {
 
                   <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-3">
                     <h2 className="text-lg font-bold text-[#4A3B32]">Catálogo Cadastrado</h2>
-                    {state.products.map((prod) => (
-                      <div
-                        key={prod.id}
-                        className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0]"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <img
-                            src={prod.imagem}
-                            alt={prod.nome}
-                            className="w-12 h-12 rounded-lg object-cover shrink-0"
-                          />
-                          <div className="min-w-0">
-                            <p className="font-semibold text-sm text-[#4A3B32] truncate">{prod.nome}</p>
-                            <p className="text-xs text-[#6B584C]">
-                              {formatBRL(prod.preco)} • {prod.categoria} •{' '}
-                              <span className={prod.ativo ? 'text-[#6A8E96] font-semibold' : 'text-red-500'}>
-                                {prod.ativo ? 'Ativo' : 'Pausado'}
-                              </span>
-                            </p>
+                    {products.length === 0 ? (
+                      <p className="text-sm text-[#6B584C]">Nenhum produto cadastrado ainda.</p>
+                    ) : (
+                      products.map((prod) => (
+                        <div
+                          key={prod.id}
+                          className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0]"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <img
+                              src={prod.imagem}
+                              alt={prod.nome}
+                              className="w-12 h-12 rounded-lg object-cover shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <p className="font-semibold text-sm text-[#4A3B32] truncate">{prod.nome}</p>
+                              <p className="text-xs text-[#6B584C]">
+                                {formatBRL(prod.preco)} • {prod.categoria} •{' '}
+                                <span className={prod.ativo ? 'text-[#6A8E96] font-semibold' : 'text-red-500'}>
+                                  {prod.ativo ? 'Ativo' : 'Pausado'}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditProduct(prod)}
+                              className="p-2 rounded-lg bg-white border border-[#DFCFC1] hover:bg-[#F3EAE2]"
+                              title="Editar"
+                            >
+                              <Edit3 className="w-4 h-4 text-[#4A3B32]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleProductActive(prod)}
+                              className="px-2.5 py-1.5 rounded-lg bg-white border border-[#DFCFC1] text-xs font-medium"
+                            >
+                              {prod.ativo ? 'Pausar' : 'Ativar'}
+                            </button>
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleStartEditProduct(prod)}
-                            className="p-2 rounded-lg bg-white border border-[#DFCFC1] hover:bg-[#F3EAE2]"
-                            title="Editar"
-                          >
-                            <Edit3 className="w-4 h-4 text-[#4A3B32]" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleProductActive(prod.id)}
-                            className="px-2.5 py-1.5 rounded-lg bg-white border border-[#DFCFC1] text-xs font-medium"
-                          >
-                            {prod.ativo ? 'Pausar' : 'Ativar'}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* Seção Configurações */}
               {adminSection === 'config' && (
                 <div className="bg-white rounded-2xl border border-[#E6D8CC] p-6 max-w-2xl space-y-4">
                   <h2 className="text-lg font-bold text-[#4A3B32]">Configurações da Vitrine e Frete</h2>
@@ -1241,13 +1308,8 @@ export default function App() {
                       <label className="block text-xs font-semibold mb-1">Nome da marca</label>
                       <input
                         type="text"
-                        value={state.config.nomeLoja}
-                        onChange={(e) =>
-                          setState((prev) => ({
-                            ...prev,
-                            config: { ...prev.config, nomeLoja: e.target.value }
-                          }))
-                        }
+                        value={config.nomeLoja}
+                        onChange={(e) => handleSaveConfig({ nomeLoja: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
                       />
                     </div>
@@ -1255,13 +1317,8 @@ export default function App() {
                       <label className="block text-xs font-semibold mb-1">Frase / Subtítulo</label>
                       <input
                         type="text"
-                        value={state.config.subtitulo}
-                        onChange={(e) =>
-                          setState((prev) => ({
-                            ...prev,
-                            config: { ...prev.config, subtitulo: e.target.value }
-                          }))
-                        }
+                        value={config.subtitulo}
+                        onChange={(e) => handleSaveConfig({ subtitulo: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
                       />
                     </div>
@@ -1270,12 +1327,9 @@ export default function App() {
                       <input
                         type="number"
                         step="0.5"
-                        value={state.config.freteBase}
+                        value={config.freteBase}
                         onChange={(e) =>
-                          setState((prev) => ({
-                            ...prev,
-                            config: { ...prev.config, freteBase: Number(e.target.value) || 0 }
-                          }))
+                          handleSaveConfig({ freteBase: Number(e.target.value) || 0 })
                         }
                         className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
                       />
@@ -1285,12 +1339,9 @@ export default function App() {
                       <input
                         type="number"
                         step="5"
-                        value={state.config.freteGratisAcima}
+                        value={config.freteGratisAcima}
                         onChange={(e) =>
-                          setState((prev) => ({
-                            ...prev,
-                            config: { ...prev.config, freteGratisAcima: Number(e.target.value) || 0 }
-                          }))
+                          handleSaveConfig({ freteGratisAcima: Number(e.target.value) || 0 })
                         }
                         className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
                       />
@@ -1303,7 +1354,6 @@ export default function App() {
         </main>
       )}
 
-      {/* Gaveta Lateral da Sacola */}
       {isCartOpen && (
         <div className="fixed inset-0 z-40 flex justify-end bg-black/40">
           <div className="w-full max-w-md bg-[#FAF6F2] h-full shadow-2xl flex flex-col justify-between border-l border-[#E5D7CA]">
@@ -1370,7 +1420,6 @@ export default function App() {
                     </div>
                   ))}
 
-                  {/* Calculadora de Frete */}
                   <form
                     onSubmit={handleCalcularFrete}
                     className="bg-white p-4 rounded-2xl border border-[#E8DBD0] space-y-2"
@@ -1429,7 +1478,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Modal de Checkout & Pix */}
       {isCheckoutOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 border border-[#E6D8CC] shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
@@ -1516,10 +1564,11 @@ export default function App() {
 
                 <button
                   type="submit"
-                  className="w-full bg-[#4A3B32] hover:bg-[#352922] text-[#FAF6F2] py-3 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2"
+                  disabled={savingAction}
+                  className="w-full bg-[#4A3B32] hover:bg-[#352922] text-[#FAF6F2] py-3 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 disabled:opacity-60"
                 >
                   <QrCode className="w-4 h-4 text-[#C99649]" />
-                  <span>Gerar Código Pix</span>
+                  <span>{savingAction ? 'Registrando pedido...' : 'Gerar Código Pix'}</span>
                 </button>
               </form>
             ) : (
@@ -1538,4 +1587,51 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleCopyPix}
-                  className="w-full py-2.5 px-4 rounded-xl border border-[#DFCFC1] bg-[#
+                  className="w-full py-2.5 px-4 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-xs font-semibold flex items-center justify-center gap-2"
+                >
+                  {copiedPix ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span>Código Pix copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 text-[#6A8E96]" />
+                      <span>Copiar código Pix Copia e Cola</span>
+                    </>
+                  )}
+                </button>
+
+                {pendingOrder.status === 'Aguardando Pagamento' ? (
+                  <button
+                    type="button"
+                    disabled={savingAction}
+                    onClick={handleSimulatePixPaid}
+                    className="w-full bg-[#6A8E96] hover:bg-[#587880] text-white py-3 rounded-xl text-sm font-semibold transition"
+                  >
+                    Confirmar / Simular Pagamento Aprovado
+                  </button>
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-2">
+                    <p className="font-semibold">
+                      Pedido salvo! Use o código <strong>{pendingOrder.id}</strong> na aba &ldquo;Acompanhar Pedido&rdquo;.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <footer className="bg-white border-t border-[#E8DBD0] py-6 px-4 text-center text-xs text-[#7C685B]">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>
+            <strong>{config.nomeLoja}</strong> — {config.subtitulo}
+          </span>
+          <span>Vitrine artesanal conectada ao Supabase</span>
+        </div>
+      </footer>
+    </div>
+  );
+}
