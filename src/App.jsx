@@ -28,7 +28,11 @@ import {
   ArrowRight,
   Settings,
   Tag,
-  RefreshCw
+  RefreshCw,
+  Mail,
+  Upload,
+  FolderPlus,
+  Image as ImageIcon
 } from 'lucide-react';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -39,13 +43,18 @@ const INITIAL_CONFIG = {
   nomeLoja: 'Santo Papel Colorido',
   subtitulo: 'Detalhes que encantam',
   whatsapp: '5512999999999',
-  chavePix: 'contato@santopapelcolorido.com.br',
   freteBase: 15.0,
   freteGratisAcima: 150.0
 };
 
+const DEFAULT_FALLBACK_CATEGORIES = [
+  'Topos de Bolo',
+  'Lembrancinhas',
+  'Kits Festa',
+  'Papelaria Corporativa'
+];
+
 const STATUS_STEPS = ['Aguardando Pagamento', 'Em Produção', 'Enviado', 'Concluído'];
-const CATEGORIES = ['Todos', 'Topos de Bolo', 'Lembrancinhas', 'Kits Festa', 'Papelaria Corporativa'];
 
 function formatBRL(value) {
   return Number(value || 0).toLocaleString('pt-BR', {
@@ -100,10 +109,12 @@ function BrandLogo({ size = 'md' }) {
 
 export default function App() {
   const [products, setProducts] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([]);
   const [orders, setOrders] = useState([]);
   const [config, setConfig] = useState(INITIAL_CONFIG);
   const [loadingData, setLoadingData] = useState(true);
   const [savingAction, setSavingAction] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [activeTab, setActiveTab] = useState('vitrine');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -117,6 +128,7 @@ export default function App() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [checkoutForm, setCheckoutForm] = useState({
     clienteNome: '',
+    clienteEmail: '',
     clienteWhatsapp: '',
     clienteCep: '',
     clienteEndereco: ''
@@ -132,13 +144,19 @@ export default function App() {
   const [adminPassword, setAdminPassword] = useState('');
   const [adminError, setAdminError] = useState('');
   const [adminSection, setAdminSection] = useState('resumo');
+
+  // Gestão de Categorias
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategory, setEditingCategory] = useState(null);
+
+  // Gestão de Produtos
   const [newProduct, setNewProduct] = useState({
     nome: '',
     descricao: '',
     preco: '',
-    categoria: 'Topos de Bolo',
+    categoria: '',
     prazo: '5 dias úteis',
-    imagem: 'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80'
+    imagem: ''
   });
   const [editingProductId, setEditingProductId] = useState(null);
 
@@ -146,8 +164,21 @@ export default function App() {
     setToastMsg(msg);
     setTimeout(() => {
       setToastMsg((prev) => (prev === msg ? '' : prev));
-    }, 3000);
+    }, 3200);
   };
+
+  const categoryNames = useMemo(() => {
+    if (categoriesList.length > 0) {
+      return categoriesList.map((c) => c.nome);
+    }
+    return DEFAULT_FALLBACK_CATEGORIES;
+  }, [categoriesList]);
+
+  useEffect(() => {
+    if (!newProduct.categoria && categoryNames.length > 0) {
+      setNewProduct((prev) => ({ ...prev, categoria: categoryNames[0] }));
+    }
+  }, [categoryNames, newProduct.categoria]);
 
   const loadAllFromSupabase = useCallback(async () => {
     if (!supabase) {
@@ -156,12 +187,17 @@ export default function App() {
     }
     setLoadingData(true);
     try {
-      const [prodRes, ordRes, itemsRes, cfgRes] = await Promise.all([
+      const [prodRes, catRes, ordRes, itemsRes, cfgRes] = await Promise.all([
         supabase.from('produtos').select('*').order('criado_em', { ascending: false }),
+        supabase.from('categorias').select('*').order('nome', { ascending: true }),
         supabase.from('pedidos').select('*').order('criado_em', { ascending: false }),
         supabase.from('itens_pedido').select('*'),
         supabase.from('config_loja').select('*').eq('id', 1).single()
       ]);
+
+      if (catRes.data) {
+        setCategoriesList(catRes.data);
+      }
 
       if (prodRes.data) {
         setProducts(
@@ -240,6 +276,28 @@ export default function App() {
     loadAllFromSupabase();
   }, [loadAllFromSupabase]);
 
+  useEffect(() => {
+    if (!pendingOrder || pendingOrder.status !== 'Aguardando Pagamento' || !supabase) return;
+
+    const timer = setInterval(async () => {
+      const { data } = await supabase
+        .from('pedidos')
+        .select('status')
+        .eq('codigo_pedido', pendingOrder.id)
+        .single();
+
+      if (data && data.status !== 'Aguardando Pagamento') {
+        setPendingOrder((prev) => (prev ? { ...prev, status: data.status } : null));
+        setOrders((prev) =>
+          prev.map((o) => (o.id === pendingOrder.id ? { ...o, status: data.status } : o))
+        );
+        showToast(`Pix confirmado! Pedido ${pendingOrder.id} agora está "${data.status}".`);
+      }
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [pendingOrder]);
+
   const subtotal = useMemo(
     () => cart.reduce((acc, item) => acc + item.preco * item.quantidade, 0),
     [cart]
@@ -277,6 +335,111 @@ export default function App() {
     const emProducao = orders.filter((o) => o.status === 'Em Produção').length;
     return { faturamento, vendasCount, ticketMedio, emProducao };
   }, [orders]);
+
+  // Upload direto para Supabase Storage
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!supabase) {
+      showToast('Supabase não conectado');
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const safeName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('produtos')
+        .upload(safeName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage.from('produtos').getPublicUrl(safeName);
+
+      if (publicUrlData?.publicUrl) {
+        setNewProduct((prev) => ({ ...prev, imagem: publicUrlData.publicUrl }));
+        showToast('Foto enviada com sucesso!');
+      }
+    } catch {
+      showToast('Erro ao enviar foto. Verifique se executou o SQL do bucket "produtos".');
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+
+  // CRUD de Categorias
+  const handleAddCategory = async (e) => {
+    e.preventDefault();
+    const trimmed = newCategoryName.trim();
+    if (!trimmed || !supabase) return;
+
+    setSavingAction(true);
+    try {
+      const { error } = await supabase.from('categorias').insert({ nome: trimmed });
+      if (error) throw error;
+      setNewCategoryName('');
+      showToast(`Categoria "${trimmed}" criada!`);
+      await loadAllFromSupabase();
+    } catch {
+      showToast('Não foi possível criar (verifique se o nome já existe ou se rodou o SQL).');
+    } finally {
+      setSavingAction(false);
+    }
+  };
+
+  const handleRenameCategory = async (e) => {
+    e.preventDefault();
+    if (!editingCategory || !editingCategory.nome.trim() || !supabase) return;
+
+    const novoNome = editingCategory.nome.trim();
+    const nomeAntigo = editingCategory.nomeOriginal;
+
+    setSavingAction(true);
+    try {
+      const { error } = await supabase
+        .from('categorias')
+        .update({ nome: novoNome })
+        .eq('id', editingCategory.id);
+
+      if (error) throw error;
+
+      if (nomeAntigo && nomeAntigo !== novoNome) {
+        await supabase.from('produtos').update({ categoria: novoNome }).eq('categoria', nomeAntigo);
+      }
+
+      setEditingCategory(null);
+      showToast(`Categoria atualizada para "${novoNome}"!`);
+      await loadAllFromSupabase();
+    } catch {
+      showToast('Erro ao renomear categoria');
+    } finally {
+      setSavingAction(false);
+    }
+  };
+
+  const handleDeleteCategory = async (cat) => {
+    if (!supabase) return;
+    setSavingAction(true);
+    try {
+      const { error } = await supabase.from('categorias').delete().eq('id', cat.id);
+      if (error) throw error;
+      if (selectedCategory === cat.nome) {
+        setSelectedCategory('Todos');
+      }
+      showToast(`Categoria "${cat.nome}" removida!`);
+      await loadAllFromSupabase();
+    } catch {
+      showToast('Erro ao excluir categoria');
+    } finally {
+      setSavingAction(false);
+    }
+  };
 
   const handleAddToCart = (product) => {
     setCart((prev) => {
@@ -350,7 +513,7 @@ export default function App() {
       return;
     }
     if (!supabase) {
-      showToast('Configure as chaves do Supabase na Vercel primeiro');
+      showToast('Supabase não conectado');
       return;
     }
 
@@ -359,6 +522,22 @@ export default function App() {
     const codigoPedido = `PED-${randomNum}`;
 
     try {
+      const pixRes = await fetch('/api/criar-pix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          codigoPedido,
+          valorTotal: totalCarrinho,
+          clienteNome: checkoutForm.clienteNome.trim(),
+          clienteEmail: checkoutForm.clienteEmail.trim() || 'cliente@santopapelcolorido.com.br'
+        })
+      });
+
+      const pixData = await pixRes.json();
+      if (!pixRes.ok) {
+        throw new Error(pixData.error || 'Falha ao gerar Pix no Mercado Pago');
+      }
+
       const { data: insertedOrder, error: orderErr } = await supabase
         .from('pedidos')
         .insert({
@@ -370,7 +549,8 @@ export default function App() {
           valor_produtos: subtotal,
           valor_frete: freteAtual,
           valor_total: totalCarrinho,
-          status: 'Aguardando Pagamento'
+          status: 'Aguardando Pagamento',
+          mp_payment_id: pixData.paymentId
         })
         .select()
         .single();
@@ -405,6 +585,8 @@ export default function App() {
         total: totalCarrinho,
         status: 'Aguardando Pagamento',
         codigoRastreio: '',
+        qrCodeCopiaECola: pixData.qrCodeCopiaECola,
+        qrCodeBase64: pixData.qrCodeBase64,
         criadoEm: 'Agora mesmo'
       };
 
@@ -412,36 +594,18 @@ export default function App() {
       setPendingOrder(newOrderObj);
       setCart([]);
       setFreteCalculado(null);
-      showToast(`Pedido ${codigoPedido} salvo no banco de dados!`);
-    } catch {
-      showToast('Não foi possível salvar o pedido no Supabase');
-    } finally {
-      setSavingAction(false);
-    }
-  };
-
-  const handleSimulatePixPaid = async () => {
-    if (!pendingOrder || !supabase) return;
-    setSavingAction(true);
-    try {
-      await supabase
-        .from('pedidos')
-        .update({ status: 'Em Produção' })
-        .eq('codigo_pedido', pendingOrder.id);
-
-      setOrders((prev) =>
-        prev.map((ord) => (ord.id === pendingOrder.id ? { ...ord, status: 'Em Produção' } : ord))
-      );
-      setPendingOrder((prev) => (prev ? { ...prev, status: 'Em Produção' } : null));
-      showToast(`Pagamento do pedido ${pendingOrder.id} aprovado!`);
+      showToast(`Pix gerado para o pedido ${codigoPedido}!`);
+    } catch (err) {
+      showToast(err.message || 'Erro ao gerar cobrança Pix');
     } finally {
       setSavingAction(false);
     }
   };
 
   const handleCopyPix = () => {
-    const pixCode = `00020126580014BR.GOV.BCB.PIX0136${config.chavePix}5204000053039865802BR5920SANTO PAPEL COLORIDO6009JACAREI62070503***6304`;
-    navigator.clipboard?.writeText(pixCode).catch(() => {});
+    const code = pendingOrder?.qrCodeCopiaECola || '';
+    if (!code) return;
+    navigator.clipboard?.writeText(code).catch(() => {});
     setCopiedPix(true);
     setTimeout(() => setCopiedPix(false), 2000);
   };
@@ -454,6 +618,7 @@ export default function App() {
       setFoundOrder(null);
       return;
     }
+    await loadAllFromSupabase();
     const match = orders.find(
       (o) =>
         o.id.toLowerCase() === term ||
@@ -510,6 +675,8 @@ export default function App() {
       return;
     }
 
+    const categoriaEscolhida = newProduct.categoria || categoryNames[0] || 'Geral';
+
     setSavingAction(true);
     try {
       if (editingProductId) {
@@ -519,7 +686,7 @@ export default function App() {
             nome: newProduct.nome.trim(),
             descricao: newProduct.descricao.trim() || 'Peça artesanal personalizada.',
             preco: precoNum,
-            categoria: newProduct.categoria,
+            categoria: categoriaEscolhida,
             prazo_producao: newProduct.prazo || '5 dias úteis',
             imagem_url: newProduct.imagem.trim()
           })
@@ -527,13 +694,13 @@ export default function App() {
 
         if (error) throw error;
         setEditingProductId(null);
-        showToast('Produto atualizado no Supabase!');
+        showToast('Produto atualizado!');
       } else {
         const { error } = await supabase.from('produtos').insert({
           nome: newProduct.nome.trim(),
           descricao: newProduct.descricao.trim() || 'Peça artesanal personalizada.',
           preco: precoNum,
-          categoria: newProduct.categoria,
+          categoria: categoriaEscolhida,
           prazo_producao: newProduct.prazo || '5 dias úteis',
           imagem_url:
             newProduct.imagem.trim() ||
@@ -542,16 +709,16 @@ export default function App() {
         });
 
         if (error) throw error;
-        showToast('Produto salvo no Supabase!');
+        showToast('Produto salvo na vitrine!');
       }
 
       setNewProduct({
         nome: '',
         descricao: '',
         preco: '',
-        categoria: 'Topos de Bolo',
+        categoria: categoryNames[0] || '',
         prazo: '5 dias úteis',
-        imagem: 'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80'
+        imagem: ''
       });
       await loadAllFromSupabase();
     } catch {
@@ -612,12 +779,6 @@ export default function App() {
         <div className="fixed bottom-5 right-5 z-50 bg-[#4A3B32] text-[#FAF6F2] px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 text-sm border border-[#C99649]/40">
           <Sparkles className="w-4 h-4 text-[#C99649] shrink-0" />
           <span>{toastMsg}</span>
-        </div>
-      )}
-
-      {!supabase && (
-        <div className="bg-amber-100 border-b border-amber-300 text-amber-950 text-xs py-2 px-4 text-center">
-          Atenção: configure <strong>VITE_SUPABASE_URL</strong> e <strong>VITE_SUPABASE_ANON_KEY</strong> nas Environment Variables da Vercel e faça Redeploy para salvar pedidos na nuvem.
         </div>
       )}
 
@@ -730,7 +891,7 @@ export default function App() {
           <section className="max-w-6xl mx-auto px-4 py-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                {CATEGORIES.map((cat) => (
+                {['Todos', ...categoryNames].map((cat) => (
                   <button
                     key={cat}
                     type="button"
@@ -752,7 +913,7 @@ export default function App() {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar topo, kit, lembrancinha..."
+                  placeholder="Buscar item..."
                   className="w-full pl-10 pr-4 py-2 rounded-xl bg-white border border-[#E5D7CA] text-sm focus:outline-none focus:border-[#D48C84]"
                 />
               </div>
@@ -955,7 +1116,7 @@ export default function App() {
                   >
                     Acesso do Ateliê
                   </h1>
-                  <p className="text-xs text-[#6B584C]">Gestão de vendas, catálogo e rastreio</p>
+                  <p className="text-xs text-[#6B584C]">Gestão de vendas, categorias, catálogo e rastreio</p>
                 </div>
               </div>
 
@@ -993,7 +1154,7 @@ export default function App() {
                     Painel Administrativo — {config.nomeLoja}
                   </h1>
                   <p className="text-xs text-[#6B584C]">
-                    Dados sincronizados em tempo real com o Supabase.
+                    Gerencie pedidos, categorias personalizadas e fotos dos produtos.
                   </p>
                 </div>
 
@@ -1008,8 +1169,9 @@ export default function App() {
                   </button>
 
                   {[
-                    { id: 'resumo', label: 'Visão Geral & Pedidos', icon: TrendingUp },
+                    { id: 'resumo', label: 'Pedidos', icon: TrendingUp },
                     { id: 'produtos', label: 'Produtos', icon: Tag },
+                    { id: 'categorias', label: 'Categorias', icon: FolderPlus },
                     { id: 'config', label: 'Configurações', icon: Settings }
                   ].map((tab) => {
                     const Icon = tab.icon;
@@ -1075,6 +1237,7 @@ export default function App() {
                 </div>
               </div>
 
+              {/* ABA PEDIDOS */}
               {adminSection === 'resumo' && (
                 <div className="bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-4">
                   <h2 className="text-lg font-bold text-[#4A3B32]">Pedidos e Rastreio</h2>
@@ -1133,6 +1296,110 @@ export default function App() {
                 </div>
               )}
 
+              {/* ABA CATEGORIAS */}
+              {adminSection === 'categorias' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <form
+                    onSubmit={handleAddCategory}
+                    className="bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-3 h-fit"
+                  >
+                    <h2 className="text-lg font-bold text-[#4A3B32]">Nova Categoria</h2>
+                    <p className="text-xs text-[#6B584C]">
+                      Crie grupos como Cadernos, Blocos, Adesivos, Planners ou Caixas.
+                    </p>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Nome da categoria</label>
+                      <input
+                        type="text"
+                        required
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        placeholder="Ex.: Cadernos Personalizados"
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={savingAction}
+                      className="w-full bg-[#D48C84] hover:bg-[#c37971] text-white py-2.5 rounded-xl text-xs font-semibold transition"
+                    >
+                      {savingAction ? 'Salvando...' : 'Criar Categoria'}
+                    </button>
+                  </form>
+
+                  <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-3">
+                    <h2 className="text-lg font-bold text-[#4A3B32]">Categorias Cadastradas</h2>
+                    {categoriesList.length === 0 ? (
+                      <p className="text-xs text-[#6B584C]">
+                        Nenhuma categoria encontrada. Rode o SQL da tabela <code>categorias</code> no Supabase ou crie uma ao lado.
+                      </p>
+                    ) : (
+                      categoriesList.map((cat) => (
+                        <div
+                          key={cat.id}
+                          className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0]"
+                        >
+                          {editingCategory?.id === cat.id ? (
+                            <form onSubmit={handleRenameCategory} className="flex-1 flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editingCategory.nome}
+                                onChange={(e) =>
+                                  setEditingCategory({ ...editingCategory, nome: e.target.value })
+                                }
+                                className="flex-1 px-3 py-1.5 rounded-lg border border-[#DFCFC1] bg-white text-sm"
+                              />
+                              <button
+                                type="submit"
+                                className="px-3 py-1.5 rounded-lg bg-[#6A8E96] text-white text-xs font-semibold"
+                              >
+                                Salvar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingCategory(null)}
+                                className="px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] text-xs"
+                              >
+                                Cancelar
+                              </button>
+                            </form>
+                          ) : (
+                            <>
+                              <span className="font-semibold text-sm text-[#4A3B32]">{cat.nome}</span>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEditingCategory({
+                                      id: cat.id,
+                                      nome: cat.nome,
+                                      nomeOriginal: cat.nome
+                                    })
+                                  }
+                                  className="p-2 rounded-lg bg-white border border-[#DFCFC1] hover:bg-[#F3EAE2]"
+                                  title="Renomear categoria"
+                                >
+                                  <Edit3 className="w-4 h-4 text-[#4A3B32]" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteCategory(cat)}
+                                  className="p-2 rounded-lg bg-white border border-[#DFCFC1] hover:bg-red-50 text-red-600"
+                                  title="Excluir categoria"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ABA PRODUTOS COM UPLOAD DE FOTO */}
               {adminSection === 'produtos' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <form
@@ -1172,7 +1439,7 @@ export default function App() {
                           onChange={(e) => setNewProduct({ ...newProduct, categoria: e.target.value })}
                           className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
                         >
-                          {CATEGORIES.filter((c) => c !== 'Todos').map((c) => (
+                          {categoryNames.map((c) => (
                             <option key={c} value={c}>
                               {c}
                             </option>
@@ -1192,15 +1459,38 @@ export default function App() {
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold mb-1">URL da foto</label>
-                      <input
-                        type="text"
-                        value={newProduct.imagem}
-                        onChange={(e) => setNewProduct({ ...newProduct, imagem: e.target.value })}
-                        placeholder="https://..."
-                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
-                      />
+                    {/* Upload direto de foto */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold">Foto do produto</label>
+                      <label className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl border-2 border-dashed border-[#D48C84] bg-[#FAF6F2] hover:bg-[#F4EAE3] cursor-pointer text-xs font-semibold text-[#4A3B32] transition">
+                        <Upload className="w-4 h-4 text-[#D48C84]" />
+                        <span>
+                          {uploadingImage ? 'Enviando foto...' : 'Escolher foto do aparelho'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={uploadingImage}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {newProduct.imagem && (
+                        <div className="flex items-center gap-3 p-2 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0]">
+                          <img
+                            src={newProduct.imagem}
+                            alt="Prévia"
+                            className="w-12 h-12 rounded-lg object-cover shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-semibold text-[#6A8E96] flex items-center gap-1">
+                              <ImageIcon className="w-3 h-3" /> Foto pronta
+                            </p>
+                            <p className="text-[10px] text-[#8B7669] truncate">{newProduct.imagem}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -1217,7 +1507,7 @@ export default function App() {
                     <div className="flex gap-2 pt-1">
                       <button
                         type="submit"
-                        disabled={savingAction}
+                        disabled={savingAction || uploadingImage}
                         className="flex-1 bg-[#D48C84] hover:bg-[#c37971] text-white py-2.5 rounded-xl text-xs font-semibold transition disabled:opacity-60"
                       >
                         {savingAction
@@ -1235,10 +1525,9 @@ export default function App() {
                               nome: '',
                               descricao: '',
                               preco: '',
-                              categoria: 'Topos de Bolo',
+                              categoria: categoryNames[0] || '',
                               prazo: '5 dias úteis',
-                              imagem:
-                                'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80'
+                              imagem: ''
                             });
                           }}
                           className="px-3 py-2 rounded-xl border border-[#DFCFC1] text-xs font-semibold"
@@ -1300,6 +1589,7 @@ export default function App() {
                 </div>
               )}
 
+              {/* ABA CONFIGURAÇÕES */}
               {adminSection === 'config' && (
                 <div className="bg-white rounded-2xl border border-[#E6D8CC] p-6 max-w-2xl space-y-4">
                   <h2 className="text-lg font-bold text-[#4A3B32]">Configurações da Vitrine e Frete</h2>
@@ -1533,6 +1823,24 @@ export default function App() {
                     />
                   </div>
                   <div>
+                    <label className="block text-xs font-semibold mb-1 flex items-center gap-1">
+                      <Mail className="w-3.5 h-3.5 text-[#C99649]" /> E-mail (comprovante Pix)
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={checkoutForm.clienteEmail}
+                      onChange={(e) =>
+                        setCheckoutForm({ ...checkoutForm, clienteEmail: e.target.value })
+                      }
+                      placeholder="voce@email.com"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
                     <label className="block text-xs font-semibold mb-1">CEP</label>
                     <input
                       type="text"
@@ -1542,19 +1850,18 @@ export default function App() {
                       className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Endereço de entrega</label>
-                  <input
-                    type="text"
-                    value={checkoutForm.clienteEndereco}
-                    onChange={(e) =>
-                      setCheckoutForm({ ...checkoutForm, clienteEndereco: e.target.value })
-                    }
-                    placeholder="Rua, número, bairro, cidade"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
-                  />
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold mb-1">Endereço de entrega</label>
+                    <input
+                      type="text"
+                      value={checkoutForm.clienteEndereco}
+                      onChange={(e) =>
+                        setCheckoutForm({ ...checkoutForm, clienteEndereco: e.target.value })
+                      }
+                      placeholder="Rua, número, bairro, cidade"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                    />
+                  </div>
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-[#FAF6F2] border border-[#E8DBD0] flex items-center justify-between text-sm">
@@ -1568,21 +1875,32 @@ export default function App() {
                   className="w-full bg-[#4A3B32] hover:bg-[#352922] text-[#FAF6F2] py-3 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 disabled:opacity-60"
                 >
                   <QrCode className="w-4 h-4 text-[#C99649]" />
-                  <span>{savingAction ? 'Registrando pedido...' : 'Gerar Código Pix'}</span>
+                  <span>{savingAction ? 'Gerando Pix...' : 'Gerar QR Code Pix'}</span>
                 </button>
               </form>
             ) : (
               <div className="space-y-4 text-center">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#EAF1F3] text-[#4E6E75]">
-                  <span>Status atual: {pendingOrder.status}</span>
+                  <span>Status: {pendingOrder.status}</span>
                 </div>
 
-                <div className="mx-auto w-40 h-40 rounded-2xl border-2 border-dashed border-[#C99649] bg-[#FAF6F2] flex flex-col items-center justify-center p-3">
-                  <QrCode className="w-20 h-20 text-[#4A3B32]" />
-                  <span className="text-[11px] font-bold text-[#4A3B32] mt-1">
-                    {formatBRL(pendingOrder.total)}
-                  </span>
-                </div>
+                {pendingOrder.qrCodeBase64 ? (
+                  <div className="mx-auto w-48 h-48 rounded-2xl border border-[#E6D8CC] bg-white p-2 flex items-center justify-center shadow-sm">
+                    <img
+                      src={`data:image/png;base64,${pendingOrder.qrCodeBase64}`}
+                      alt="QR Code Pix Mercado Pago"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="mx-auto w-40 h-40 rounded-2xl border-2 border-dashed border-[#C99649] bg-[#FAF6F2] flex flex-col items-center justify-center p-3">
+                    <QrCode className="w-20 h-20 text-[#4A3B32]" />
+                  </div>
+                )}
+
+                <p className="text-base font-bold text-[#4A3B32]">
+                  Valor: {formatBRL(pendingOrder.total)}
+                </p>
 
                 <button
                   type="button"
@@ -1592,7 +1910,7 @@ export default function App() {
                   {copiedPix ? (
                     <>
                       <Check className="w-4 h-4 text-emerald-600" />
-                      <span>Código Pix copiado!</span>
+                      <span>Código Pix Copia e Cola copiado!</span>
                     </>
                   ) : (
                     <>
@@ -1603,18 +1921,13 @@ export default function App() {
                 </button>
 
                 {pendingOrder.status === 'Aguardando Pagamento' ? (
-                  <button
-                    type="button"
-                    disabled={savingAction}
-                    onClick={handleSimulatePixPaid}
-                    className="w-full bg-[#6A8E96] hover:bg-[#587880] text-white py-3 rounded-xl text-sm font-semibold transition"
-                  >
-                    Confirmar / Simular Pagamento Aprovado
-                  </button>
+                  <p className="text-xs text-[#6B584C]">
+                    Abra o app do seu banco e pague o Pix. Assim que o pagamento for confirmado pelo Mercado Pago, esta tela atualiza automaticamente.
+                  </p>
                 ) : (
-                  <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-2">
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900">
                     <p className="font-semibold">
-                      Pedido salvo! Use o código <strong>{pendingOrder.id}</strong> na aba &ldquo;Acompanhar Pedido&rdquo;.
+                      Pagamento confirmado! Anote o código <strong>{pendingOrder.id}</strong> para acompanhar o envio.
                     </p>
                   </div>
                 )}
@@ -1629,7 +1942,7 @@ export default function App() {
           <span>
             <strong>{config.nomeLoja}</strong> — {config.subtitulo}
           </span>
-          <span>Vitrine artesanal conectada ao Supabase</span>
+          <span>Vitrine artesanal • Supabase + Mercado Pago</span>
         </div>
       </footer>
     </div>
