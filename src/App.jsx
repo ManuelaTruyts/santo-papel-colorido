@@ -1247,3 +1247,520 @@ export default function App() {
                       <div className="space-y-3 pt-1">
                         <div>
                           <label className="block text-xs text-[#6E5650] mb-1">
+                            Título do bloco na vitrine
+                          </label>
+                          <input
+                            type="text"
+                            value={formProduto.titulo_variacoes}
+                            onChange={(e) =>
+                              setFormProduto((p) => ({
+                                ...p,
+                                titulo_variacoes: e.target.value,
+                              }))
+                            }
+                            placeholder={DEFAULT_TITULO_BLOCO}
+                            className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                          />
+                        </div>
+
+                        <div className="border-t border-[#E6D9CC] pt-2.5 space-y-1.5">
+                          <label className="block text-xs font-medium text-[#4A2E2B]">
+                            Variação 1 — Título e opções (separadas por
+                            vírgula)
+                          </label>
+                          <input
+                            type="text"
+                            value={formProduto.titulo_var_1}
+                            onChange={(e) =>
+                              setFormProduto((p) => ({
+                                ...p,
+                                titulo_var_1: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: Quantidade referente ou Fragrância"
+                            className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                          />
+                          <input
+                            type="text"
+                            value={formProduto.opcoes_var_1}
+                            onChange={(e) =>
+                              setFormProduto((p) => ({
+                                ...p,
+                                opcoes_var_1: e.target.value,
+                              }))
+                            }
+                            placeholder="Opção A, Opção B"
+                            className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                          />
+                        </div>
+
+                        <div className="border-t border-[#E6D9CC] pt-2.5 space-y-1.5">
+                          <label className="block text-xs font-medium text-[#4A2E2B]">
+                            Variação 2 — Título e opções (separadas por
+                            vírgula)
+                          </label>
+                          <input
+                            type="text"
+                            value={formProduto.titulo_var_2}
+                            onChange={(e) =>
+                              setFormProduto((p) => ({
+                                ...p,
+                                titulo_var_2: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: Cor ou Fita / Tag"
+                            className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                          />
+                          <input
+                            type="text"
+                            value={formProduto.opcoes_var_2}
+                            onChange={(e) =>
+                              setFormProduto((p) => ({
+                                ...p,
+                                opcoes_var_2: e.target.value,
+                              }))
+                            }
+                            placeholder="Opção A, Opção B"
+                            className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                          />
+                        </div>
+
+                        <div className="border-t border-[#E6D9CC] pt-2.5 space-y-1.5">
+                          <label className="block text-xs font-medium text-[#4A2E2B]">
+                            Variação 3 — Título e opções (separadas por
+                            vírgula)
+                          </label>
+                          <input
+                            type="text"
+                            value={formProduto.titulo_var_3}
+                            onChange={(e) =>
+                              setFormProduto((p) => ({
+                                ...p,
+                                titulo_var_3: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: Tamanho ou Modelo"
+                            className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                          />
+                          <input
+                            type="text"
+                            value={formProduto.opcoes_var_3}
+                            onChange={(e) =>
+                              setFormProduto((p) => ({
+                                ...p,
+                                opcoes_var_3: e.target.value,
+                              }))
+                            }
+                            placeholder="Opção A, Opção B"
+                            className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs text-[#6E5650]">
+                      Foto do produto
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleUploadFoto}
+                      className="block w-full text-xs text-[#6E5650]"
+                    />
+                    {enviandoFoto && (
+                      <p className="text-xs text-[#8C6D62]">
+                        Enviando imagem...
+                      </p>
+                    )}
+                    {formProduto.foto_url && (
+                      <img
+                        src={formProduto.foto_url}
+                        alt="Prévia"
+                        className="w-20 h-20 object-cover rounded-lg border border-[#DFCFC0]"
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-[#6E5650] mb-1">
+                      Descrição
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={formProduto.descricao}
+                      onChange={(e) =>
+                        setFormProduto((p) => ({
+                          ...p,
+                          descricao: e.target.value,
+                        }))
+                      }
+                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={salvandoProduto || enviandoFoto}
+                    className="w-full py-2.5 rounded-lg bg-[#C98A7E] text-white text-sm font-medium hover:bg-[#B8776A]"
+                  >
+                    {salvandoProduto ? "Salvando..." : "Adicionar à Vitrine"}
+                  </button>
+                </form>
+
+                <div className="lg:col-span-7 bg-white border border-[#EADFD3] rounded-2xl p-5 space-y-3">
+                  <h3 className="font-semibold text-[#4A2E2B]">
+                    Catálogo Cadastrado ({produtos.length})
+                  </h3>
+                  {produtos.length === 0 ? (
+                    <p className="text-xs text-[#7A625B]">
+                      Nenhum produto cadastrado ainda.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {produtos.map((prod) => (
+                        <div
+                          key={prod.id}
+                          className="flex items-center justify-between gap-3 border border-[#EFE4D8] rounded-xl p-3 bg-[#FAF6F0]"
+                        >
+                          <div className="flex items-center gap-3">
+                            {prod.foto_url ? (
+                              <img
+                                src={prod.foto_url}
+                                alt={prod.nome}
+                                className="w-14 h-14 rounded-lg object-cover bg-white"
+                              />
+                            ) : (
+                              <div className="w-14 h-14 rounded-lg bg-[#EFE4D8] flex items-center justify-center text-[10px] text-[#7A625B]">
+                                Sem foto
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-sm font-semibold">
+                                {prod.nome}
+                              </p>
+                              <p className="text-xs text-[#7A625B]">
+                                {formatBRL(prod.preco)} •{" "}
+                                {prod.prazo_producao}
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleExcluirProduto(prod.id)}
+                            className="text-xs text-[#9E473B] hover:underline"
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {painelAba === "pedidos" && (
+              <div className="bg-white border border-[#EADFD3] rounded-2xl p-5 space-y-4">
+                <h3 className="font-semibold text-[#4A2E2B]">
+                  Pedidos Recebidos ({pedidos.length})
+                </h3>
+                {pedidos.length === 0 ? (
+                  <p className="text-xs text-[#7A625B]">
+                    Nenhum pedido registrado até o momento.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {pedidos.map((ped) => {
+                      const itensDoPedido = itensPedido.filter(
+                        (i) => i.pedido_id === ped.id
+                      );
+                      return (
+                        <div
+                          key={ped.id}
+                          className="border border-[#EFE4D8] rounded-xl p-4 bg-[#FAF6F0] space-y-2 text-xs"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <strong className="text-sm">
+                                {ped.codigo}
+                              </strong>{" "}
+                              — {ped.cliente_nome} ({ped.cliente_whatsapp})
+                            </div>
+                            <span className="font-semibold text-sm">
+                              Total: {formatBRL(ped.total)}
+                            </span>
+                          </div>
+
+                          {itensDoPedido.length > 0 && (
+                            <ul className="list-disc pl-5 text-[#5E4A46] space-y-0.5">
+                              {itensDoPedido.map((it) => (
+                                <li key={it.id}>
+                                  {it.quantidade}x {it.nome_produto}
+                                  {it.variacoes_texto
+                                    ? ` (${it.variacoes_texto})`
+                                    : ""}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+
+                          <div className="flex flex-wrap items-center gap-3 pt-2">
+                            <select
+                              value={ped.status}
+                              onChange={(e) =>
+                                handleAtualizarStatusPedido(
+                                  ped.id,
+                                  e.target.value
+                                )
+                              }
+                              className="border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 bg-white"
+                            >
+                              {STATUS_PEDIDO.map((st) => (
+                                <option key={st} value={st}>
+                                  {st}
+                                </option>
+                              ))}
+                            </select>
+
+                            <input
+                              type="text"
+                              defaultValue={ped.codigo_rastreio || ""}
+                              placeholder="Código de rastreio"
+                              onBlur={(e) =>
+                                handleSalvarRastreio(ped.id, e.target.value)
+                              }
+                              className="border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 bg-white w-44"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {painelAba === "config" && (
+              <form
+                onSubmit={handleSalvarConfig}
+                className="max-w-lg bg-white border border-[#EADFD3] rounded-2xl p-5 space-y-3"
+              >
+                <h3 className="font-semibold text-[#4A2E2B]">
+                  Configurações da Loja
+                </h3>
+                <div>
+                  <label className="block text-xs text-[#6E5650] mb-1">
+                    WhatsApp comercial (com DDI e DDD)
+                  </label>
+                  <input
+                    type="text"
+                    value={formConfig.whatsapp}
+                    onChange={(e) =>
+                      setFormConfig((c) => ({
+                        ...c,
+                        whatsapp: e.target.value,
+                      }))
+                    }
+                    placeholder="5512999999999"
+                    className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-[#6E5650] mb-1">
+                      Frete Fixo (R$)
+                    </label>
+                    <input
+                      type="text"
+                      value={formConfig.frete_fixo}
+                      onChange={(e) =>
+                        setFormConfig((c) => ({
+                          ...c,
+                          frete_fixo: e.target.value,
+                        }))
+                      }
+                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-[#6E5650] mb-1">
+                      Frete Grátis Acima de (R$)
+                    </label>
+                    <input
+                      type="text"
+                      value={formConfig.frete_gratis_acima_de}
+                      onChange={(e) =>
+                        setFormConfig((c) => ({
+                          ...c,
+                          frete_gratis_acima_de: e.target.value,
+                        }))
+                      }
+                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={salvandoConfig}
+                  className="px-4 py-2 rounded-lg bg-[#4A2E2B] text-white text-sm font-medium"
+                >
+                  {salvandoConfig ? "Salvando..." : "Salvar Configurações"}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+      </main>
+
+      {sacolaAberta && (
+        <div className="fixed inset-0 z-40 bg-black/40 flex justify-end">
+          <div className="w-full max-w-md bg-[#FFFDF9] h-full p-5 overflow-y-auto flex flex-col justify-between space-y-5">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-[#EADFD3] pb-3">
+                <h2 className="font-serif text-lg font-semibold text-[#4A2E2B]">
+                  Sua Sacola
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setSacolaAberta(false)}
+                  className="text-xs px-2.5 py-1 rounded border border-[#DFCFC0]"
+                >
+                  Fechar
+                </button>
+              </div>
+
+              {ultimoPedidoCriado && (
+                <div className="border border-emerald-200 bg-emerald-50 rounded-xl p-3 text-xs space-y-1">
+                  <p className="font-semibold text-emerald-900">
+                    Pedido confirmado: {ultimoPedidoCriado.codigo}
+                  </p>
+                  <p className="text-emerald-800">
+                    Total: {formatBRL(ultimoPedidoCriado.total)}
+                  </p>
+                </div>
+              )}
+
+              {sacola.length === 0 ? (
+                <p className="text-sm text-[#7A625B]">
+                  Nenhum item na sacola no momento.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {sacola.map((item) => (
+                    <div
+                      key={item.chaveItem}
+                      className="border border-[#EFE4D8] rounded-xl p-3 bg-white space-y-1.5 text-xs"
+                    >
+                      <div className="flex justify-between font-semibold">
+                        <span>{item.nome}</span>
+                        <span>
+                          {formatBRL(item.preco_unitario * item.quantidade)}
+                        </span>
+                      </div>
+                      {item.resumo_variacoes && (
+                        <p className="text-[#7A625B]">
+                          {item.resumo_variacoes}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleAlterarQtdSacola(item.chaveItem, -1)
+                          }
+                          className="px-2 py-0.5 border border-[#DFCFC0] rounded"
+                        >
+                          -
+                        </button>
+                        <span>{item.quantidade}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleAlterarQtdSacola(item.chaveItem, 1)
+                          }
+                          className="px-2 py-0.5 border border-[#DFCFC0] rounded"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="border-t border-[#EADFD3] pt-3 space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span>Subtotal</span>
+                      <span>{formatBRL(subtotalSacola)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Frete</span>
+                      <span>{formatBRL(valorFrete)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-sm pt-1">
+                      <span>Total</span>
+                      <span>{formatBRL(totalPedidoSacola)}</span>
+                    </div>
+                  </div>
+
+                  <form
+                    onSubmit={handleFinalizarPedido}
+                    className="space-y-2.5 pt-2"
+                  >
+                    <input
+                      type="text"
+                      value={clienteNome}
+                      onChange={(e) => setClienteNome(e.target.value)}
+                      placeholder="Seu nome completo"
+                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-xs bg-white"
+                      required
+                    />
+                    <input
+                      type="text"
+                      value={clienteWhatsapp}
+                      onChange={(e) => setClienteWhatsapp(e.target.value)}
+                      placeholder="Seu WhatsApp com DDD"
+                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-xs bg-white"
+                      required
+                    />
+                    <input
+                      type="text"
+                      value={clienteCep}
+                      onChange={(e) => setClienteCep(e.target.value)}
+                      placeholder="CEP"
+                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-xs bg-white"
+                    />
+                    <input
+                      type="text"
+                      value={clienteEndereco}
+                      onChange={(e) => setClienteEndereco(e.target.value)}
+                      placeholder="Endereço de entrega"
+                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-xs bg-white"
+                    />
+                    <input
+                      type="text"
+                      value={clienteObservacao}
+                      onChange={(e) => setClienteObservacao(e.target.value)}
+                      placeholder="Observações (opcional)"
+                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-xs bg-white"
+                    />
+                    <button
+                      type="submit"
+                      disabled={finalizandoPedido}
+                      className="w-full py-2.5 rounded-xl bg-[#4A2E2B] text-white text-xs font-medium"
+                    >
+                      {finalizandoPedido
+                        ? "Enviando pedido..."
+                        : "Finalizar Pedido"}
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
