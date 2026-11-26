@@ -1602,7 +1602,7 @@ export default function App() {
                       />
                     </div>
 
-                    {/* Variações opcionais com dropdown */}
+                  {/* Variações opcionais com dropdown */}
                     <div className="p-3.5 rounded-2xl bg-[#FAF6F2] border border-[#E5D7CA] space-y-3">
                       <label className="flex items-center justify-between gap-2 cursor-pointer">
                         <span className="text-xs font-bold text-[#4A3B32] flex items-center gap-1.5">
@@ -1620,11 +1620,20 @@ export default function App() {
                       </label>
 
                       {newProduct.variacoesAtivas && (
-                        <div className="space-y-2.5 pt-1 border-t border-[#E8DBD0]">
-                          <div>
-                            <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
-                              Opções de quantidade referente (separadas por vírgula)
+                        <div className="space-y-3 pt-2 border-t border-[#E8DBD0]">
+                          <div className="space-y-1">
+                            <label className="block text-[11px] font-semibold text-[#6B584C]">
+                              Título e opções da variação 1 (separadas por vírgula)
                             </label>
+                            <input
+                              type="text"
+                              value={newProduct.qtyLabel ?? 'Quantidade referente'}
+                              onChange={(e) =>
+                                setNewProduct({ ...newProduct, qtyLabel: e.target.value })
+                              }
+                              placeholder="Título da variação 1 (ex.: Quantidade referente)"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-white text-xs font-medium text-[#4A3B32]"
+                            />
                             <input
                               type="text"
                               value={newProduct.qtyOptionsText}
@@ -1636,10 +1645,19 @@ export default function App() {
                             />
                           </div>
 
-                          <div>
-                            <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
-                              Opções de cor (separadas por vírgula)
+                          <div className="space-y-1 pt-1 border-t border-[#EFE4D8]">
+                            <label className="block text-[11px] font-semibold text-[#6B584C]">
+                              Título e opções da variação 2 (separadas por vírgula)
                             </label>
+                            <input
+                              type="text"
+                              value={newProduct.colorLabel ?? 'Cor'}
+                              onChange={(e) =>
+                                setNewProduct({ ...newProduct, colorLabel: e.target.value })
+                              }
+                              placeholder="Título da variação 2 (ex.: Cor)"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-white text-xs font-medium text-[#4A3B32]"
+                            />
                             <input
                               type="text"
                               value={newProduct.colorOptionsText}
@@ -1651,10 +1669,19 @@ export default function App() {
                             />
                           </div>
 
-                          <div>
-                            <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
-                              Opções de tamanho (separadas por vírgula)
+                          <div className="space-y-1 pt-1 border-t border-[#EFE4D8]">
+                            <label className="block text-[11px] font-semibold text-[#6B584C]">
+                              Título e opções da variação 3 (separadas por vírgula)
                             </label>
+                            <input
+                              type="text"
+                              value={newProduct.sizeLabel ?? 'Tamanho'}
+                              onChange={(e) =>
+                                setNewProduct({ ...newProduct, sizeLabel: e.target.value })
+                              }
+                              placeholder="Título da variação 3 (ex.: Tamanho)"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-white text-xs font-medium text-[#4A3B32]"
+                            />
                             <input
                               type="text"
                               value={newProduct.sizeOptionsText}
@@ -1668,7 +1695,6 @@ export default function App() {
                         </div>
                       )}
                     </div>
-
                     {/* Upload direto de foto */}
                     <div className="space-y-2">
                       <label className="block text-xs font-semibold">Foto do produto</label>
