@@ -1,884 +1,1127 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createClient } from '@supabase/supabase-js';
+import {
+  ShoppingBag,
+  Search,
+  Plus,
+  Minus,
+  Trash2,
+  X,
+  CheckCircle2,
+  Package,
+  Truck,
+  Clock,
+  Sparkles,
+  Lock,
+  LogOut,
+  TrendingUp,
+  DollarSign,
+  ShoppingCart,
+  Edit3,
+  Copy,
+  Check,
+  Store,
+  MapPin,
+  Phone,
+  User,
+  QrCode,
+  ArrowRight,
+  Settings,
+  Tag,
+  RefreshCw,
+  Mail,
+  Upload,
+  FolderPlus,
+  Image as ImageIcon,
+  SlidersHorizontal
+} from 'lucide-react';
 
-const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL ||
-  "https://mllycuiddrguibgxcxcoc.supabase.co";
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const INITIAL_CONFIG = {
+  nomeLoja: 'Santo Papel Colorido',
+  subtitulo: 'Detalhes que encantam',
+  whatsapp: '5512999999999',
+  freteBase: 15.0,
+  freteGratisAcima: 150.0
+};
 
-const ADMIN_PIN = "santo2026";
-const BUCKET_PRODUTOS = "produtos";
-
-const STATUS_PEDIDO = [
-  "Aguardando Pagamento",
-  "Pagamento Aprovado",
-  "Em Produção",
-  "Enviado",
-  "Entregue",
+const DEFAULT_FALLBACK_CATEGORIES = [
+  'Topos de Bolo',
+  'Lembrancinhas',
+  'Kits Festa',
+  'Papelaria Corporativa'
 ];
 
-const DEFAULT_TITULO_BLOCO = "Personalize seu item";
-const DEFAULT_TITULO_VAR_1 = "Quantidade referente";
-const DEFAULT_TITULO_VAR_2 = "Cor";
-const DEFAULT_TITULO_VAR_3 = "Tamanho";
+const DEFAULT_QTY_OPTIONS = ['10 unidades', '20 unidades', '30 unidades', '50 unidades'];
+const DEFAULT_COLOR_OPTIONS = ['Azul / Creme', 'Terracota / Dourado', 'Rosa Pastel / Branco', 'Personalizada'];
+const DEFAULT_SIZE_OPTIONS = ['Pequeno', 'Médio', 'Grande'];
 
-const DEFAULT_OPCOES_VAR_1 =
-  "10 unidades, 20 unidades, 30 unidades, 50 unidades";
-const DEFAULT_OPCOES_VAR_2 =
-  "Azul / Creme, Terracota / Dourado, Rosa Pastel, Verde Sálvia";
-const DEFAULT_OPCOES_VAR_3 = "Pequeno, Médio, Grande";
+const STATUS_STEPS = ['Aguardando Pagamento', 'Em Produção', 'Enviado', 'Concluído'];
 
-function formatBRL(valor) {
-  const num = Number(valor || 0);
-  return num.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
+function formatBRL(value) {
+  return Number(value || 0).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
   });
 }
 
-function parseCsvOptions(texto) {
-  if (!texto) return [];
-  return String(texto)
-    .split(",")
-    .map((item) => item.trim())
+function parseOptionsText(text, fallback) {
+  const list = String(text || '')
+    .split(',')
+    .map((s) => s.trim())
     .filter(Boolean);
+  return list.length > 0 ? Array.from(new Set(list)) : fallback;
 }
 
-function gerarCodigoPedido() {
-  const sufixo = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `SPC-${Date.now().toString().slice(-5)}-${sufixo}`;
+function BrandLogo({ size = 'md' }) {
+  const iconSize = size === 'sm' ? 'w-9 h-9' : 'w-11 h-11';
+  const titleSize = size === 'sm' ? 'text-lg' : 'text-2xl';
+
+  return (
+    <div className="flex items-center gap-3 select-none">
+      <div
+        className={`${iconSize} rounded-full flex items-center justify-center border border-[#D48C84]/50 shadow-sm`}
+        style={{ backgroundColor: '#F6ECE8' }}
+      >
+        <svg viewBox="0 0 48 48" className="w-7 h-7" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="11" y="13" width="18" height="22" rx="3" transform="rotate(-8 11 13)" fill="#6A8E96" fillOpacity="0.85" />
+          <rect x="15" y="11" width="18" height="22" rx="3" transform="rotate(4 15 11)" fill="#D48C84" fillOpacity="0.85" />
+          <rect x="18" y="14" width="18" height="22" rx="3" fill="#FAF6F2" stroke="#C99649" strokeWidth="1.2" />
+          <path
+            d="M25 8.5V16.5C25 18.433 26.567 20 28.5 20C30.433 20 32 18.433 32 16.5V11"
+            stroke="#C99649"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          <path
+            d="M27 24.5C27 23.3954 26.1046 22.5 25 22.5C24.3 22.5 23.7 22.86 23.35 23.4C23 22.86 22.4 22.5 21.7 22.5C20.5954 22.5 19.7 23.3954 19.7 24.5C19.7 26.4 23.35 28.8 23.35 28.8C23.35 28.8 27 26.4 27 24.5Z"
+            fill="#D48C84"
+          />
+        </svg>
+      </div>
+      <div className="leading-tight">
+        <span
+          className={`block ${titleSize} font-semibold tracking-wide text-[#4A3B32]`}
+          style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+        >
+          Santo Papel Colorido
+        </span>
+        <span
+          className="block text-sm text-[#6A8E96]"
+          style={{ fontFamily: "'Dancing Script', cursive" }}
+        >
+          Detalhes que encantam
+        </span>
+      </div>
+    </div>
+  );
 }
+
+const emptyProductForm = (defaultCat = '') => ({
+  nome: '',
+  descricao: '',
+  preco: '',
+  categoria: defaultCat,
+  prazo: '5 dias úteis',
+  imagem: '',
+  variacoesAtivas: false,
+  qtyOptionsText: DEFAULT_QTY_OPTIONS.join(', '),
+  colorOptionsText: DEFAULT_COLOR_OPTIONS.join(', '),
+  sizeOptionsText: DEFAULT_SIZE_OPTIONS.join(', ')
+});
 
 export default function App() {
-  const [abaAtiva, setAbaAtiva] = useState("vitrine");
-  const [painelAba, setPainelAba] = useState("categorias");
-  const [adminAutenticado, setAdminAutenticado] = useState(false);
-  const [pinInput, setPinInput] = useState("");
-  const [erroPin, setErroPin] = useState("");
+  const [products, setProducts] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [config, setConfig] = useState(INITIAL_CONFIG);
+  const [loadingData, setLoadingData] = useState(true);
+  const [savingAction, setSavingAction] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
-  const [toast, setToast] = useState(null);
-  const [carregando, setCarregando] = useState(false);
+  const [activeTab, setActiveTab] = useState('vitrine');
+  const [selectedCategory, setSelectedCategory] = useState('Todos');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [cart, setCart] = useState([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cepInput, setCepInput] = useState('');
+  const [freteCalculado, setFreteCalculado] = useState(null);
+  const [toastMsg, setToastMsg] = useState('');
 
-  const [categorias, setCategorias] = useState([]);
-  const [produtos, setProdutos] = useState([]);
-  const [pedidos, setPedidos] = useState([]);
-  const [itensPedido, setItensPedido] = useState([]);
-  const [configLoja, setConfigLoja] = useState({
-    id: 1,
-    whatsapp: "",
-    frete_fixo: 15,
-    frete_gratis_acima_de: 150,
+  // Escolhas do cliente nos dropdowns de cada produto na vitrine
+  const [selectedVariantsByProduct, setSelectedVariantsByProduct] = useState({});
+
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [checkoutForm, setCheckoutForm] = useState({
+    clienteNome: '',
+    clienteEmail: '',
+    clienteWhatsapp: '',
+    clienteCep: '',
+    clienteEndereco: ''
   });
+  const [pendingOrder, setPendingOrder] = useState(null);
+  const [copiedPix, setCopiedPix] = useState(false);
 
-  const [categoriaFiltro, setCategoriaFiltro] = useState("Todas");
-  const [buscaProduto, setBuscaProduto] = useState("");
+  const [trackingQuery, setTrackingQuery] = useState('');
+  const [foundOrder, setFoundOrder] = useState(null);
+  const [trackingSearched, setTrackingSearched] = useState(false);
 
-  const [novaCategoriaNome, setNovaCategoriaNome] = useState("");
-  const [criandoCategoria, setCriandoCategoria] = useState(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminError, setAdminError] = useState('');
+  const [adminSection, setAdminSection] = useState('resumo');
 
-  const [formProduto, setFormProduto] = useState({
-    nome: "",
-    preco: "",
-    categoria_id: "",
-    prazo_producao: "3 dias úteis",
-    descricao: "",
-    foto_url: "",
-    tem_variacoes: true,
-    titulo_variacoes: DEFAULT_TITULO_BLOCO,
-    titulo_var_1: DEFAULT_TITULO_VAR_1,
-    opcoes_var_1: DEFAULT_OPCOES_VAR_1,
-    titulo_var_2: DEFAULT_TITULO_VAR_2,
-    opcoes_var_2: DEFAULT_OPCOES_VAR_2,
-    titulo_var_3: DEFAULT_TITULO_VAR_3,
-    opcoes_var_3: DEFAULT_OPCOES_VAR_3,
-  });
-  const [enviandoFoto, setEnviandoFoto] = useState(false);
-  const [salvandoProduto, setSalvandoProduto] = useState(false);
+  // Gestão de Categorias
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategory, setEditingCategory] = useState(null);
 
-  const [selecoesVitrine, setSelecoesVitrine] = useState({});
-  const [sacola, setSacola] = useState([]);
-  const [sacolaAberta, setSacolaAberta] = useState(false);
+  // Gestão de Produtos
+  const [newProduct, setNewProduct] = useState(emptyProductForm(''));
+  const [editingProductId, setEditingProductId] = useState(null);
 
-  const [clienteNome, setClienteNome] = useState("");
-  const [clienteWhatsapp, setClienteWhatsapp] = useState("");
-  const [clienteCep, setClienteCep] = useState("");
-  const [clienteEndereco, setClienteEndereco] = useState("");
-  const [clienteObservacao, setClienteObservacao] = useState("");
-  const [finalizandoPedido, setFinalizandoPedido] = useState(false);
-  const [ultimoPedidoCriado, setUltimoPedidoCriado] = useState(null);
-
-  const [codigoRastreio, setCodigoRastreio] = useState("");
-  const [pedidoEncontrado, setPedidoEncontrado] = useState(null);
-  const [buscandoPedido, setBuscandoPedido] = useState(false);
-
-  const [formConfig, setFormConfig] = useState({
-    whatsapp: "",
-    frete_fixo: "15",
-    frete_gratis_acima_de: "150",
-  });
-  const [salvandoConfig, setSalvandoConfig] = useState(false);
-
-  function mostrarToast(mensagem, tipo = "info") {
-    setToast({ mensagem, tipo });
-    window.clearTimeout(window.__spcToastTimer);
-    window.__spcToastTimer = window.setTimeout(() => {
-      setToast(null);
-    }, 4500);
-  }
-
-  async function carregarTudo() {
-    setCarregando(true);
-    try {
-      const [resCat, resProd, resPed, resItens, resCfg] =
-        await Promise.all([
-          supabase
-            .from("categorias")
-            .select("*")
-            .order("nome", { ascending: true }),
-          supabase
-            .from("produtos")
-            .select("*")
-            .order("criado_em", { ascending: false }),
-          supabase
-            .from("pedidos")
-            .select("*")
-            .order("criado_em", { ascending: false }),
-          supabase.from("itens_pedido").select("*"),
-          supabase.from("config_loja").select("*").eq("id", 1).maybeSingle(),
-        ]);
-
-      if (resCat.data) {
-        setCategorias(resCat.data);
-        setFormProduto((prev) => ({
-          ...prev,
-          categoria_id: prev.categoria_id || resCat.data[0]?.id || "",
-        }));
-      }
-
-      if (resProd.data) {
-        setProdutos(resProd.data);
-      }
-
-      if (resPed.data) {
-        setPedidos(resPed.data);
-      }
-
-      if (resItens.data) {
-        setItensPedido(resItens.data);
-      }
-
-      if (resCfg.data) {
-        setConfigLoja(resCfg.data);
-        setFormConfig({
-          whatsapp: resCfg.data.whatsapp || "",
-          frete_fixo: String(resCfg.data.frete_fixo ?? 15),
-          frete_gratis_acima_de: String(
-            resCfg.data.frete_gratis_acima_de ?? 150
-          ),
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      mostrarToast("Não foi possível carregar os dados do Supabase.", "erro");
-    } finally {
-      setCarregando(false);
-    }
-  }
-
-  useEffect(() => {
-    carregarTudo();
+  const showToast = useCallback((msg) => {
+    setToastMsg(msg);
+    setTimeout(() => {
+      setToastMsg((prev) => (prev === msg ? '' : prev));
+    }, 3400);
   }, []);
 
-  function handleEntrarAdmin(e) {
-    e.preventDefault();
-    if (pinInput.trim() === ADMIN_PIN) {
-      setAdminAutenticado(true);
-      setErroPin("");
-      setAbaAtiva("painel");
-      carregarTudo();
-    } else {
-      setErroPin("PIN incorreto. Tente novamente.");
+  const categoryNames = useMemo(() => {
+    if (categoriesList.length > 0) {
+      return categoriesList.map((c) => c.nome);
     }
-  }
+    return DEFAULT_FALLBACK_CATEGORIES;
+  }, [categoriesList]);
 
-  async function handleCriarCategoria(e) {
-    e.preventDefault();
-    const nomeLimpo = novaCategoriaNome.trim();
-    if (!nomeLimpo) {
-      mostrarToast("Digite o nome da categoria.", "erro");
+  // Garante que o dropdown de categoria do formulário sempre reflita as categorias carregadas
+  useEffect(() => {
+    if (categoryNames.length > 0 && !categoryNames.includes(newProduct.categoria)) {
+      setNewProduct((prev) => ({ ...prev, categoria: categoryNames[0] }));
+    }
+  }, [categoryNames, newProduct.categoria]);
+
+  const loadAllFromSupabase = useCallback(async () => {
+    if (!supabase) {
+      setLoadingData(false);
       return;
     }
-    setCriandoCategoria(true);
+    setLoadingData(true);
     try {
-      const { data, error } = await supabase
-        .from("categorias")
-        .insert([{ nome: nomeLimpo }])
-        .select()
+      const [prodRes, catRes, ordRes, itemsRes, cfgRes] = await Promise.all([
+        supabase.from('produtos').select('*').order('criado_em', { ascending: false }),
+        supabase.from('categorias').select('*').order('nome', { ascending: true }),
+        supabase.from('pedidos').select('*').order('criado_em', { ascending: false }),
+        supabase.from('itens_pedido').select('*'),
+        supabase.from('config_loja').select('*').eq('id', 1).single()
+      ]);
+
+      if (catRes.data) {
+        setCategoriesList(catRes.data);
+      }
+
+      if (prodRes.data) {
+        setProducts(
+          prodRes.data.map((p) => {
+            const qtyOpts =
+              Array.isArray(p.opcoes_quantidade) && p.opcoes_quantidade.length > 0
+                ? p.opcoes_quantidade
+                : DEFAULT_QTY_OPTIONS;
+            const colorOpts =
+              Array.isArray(p.opcoes_cor) && p.opcoes_cor.length > 0
+                ? p.opcoes_cor
+                : DEFAULT_COLOR_OPTIONS;
+            const sizeOpts =
+              Array.isArray(p.opcoes_tamanho) && p.opcoes_tamanho.length > 0
+                ? p.opcoes_tamanho
+                : DEFAULT_SIZE_OPTIONS;
+
+            return {
+              id: p.id,
+              nome: p.nome,
+              descricao: p.descricao || '',
+              preco: Number(p.preco),
+              categoria: p.categoria,
+              prazo: p.prazo_producao || '5 dias úteis',
+              imagem:
+                p.imagem_url ||
+                'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80',
+              ativo: p.ativo !== false,
+              variacoesAtivas: Boolean(p.variacoes_ativas),
+              opcoesQuantidade: qtyOpts,
+              opcoesCor: colorOpts,
+              opcoesTamanho: sizeOpts
+            };
+          })
+        );
+      }
+
+      if (ordRes.data) {
+        const allItems = itemsRes.data || [];
+        setOrders(
+          ordRes.data.map((o) => {
+            const orderItems = allItems
+              .filter((it) => it.pedido_id === o.id)
+              .map((it) => ({
+                id: it.produto_id || it.id,
+                nome: it.nome_produto,
+                quantidade: it.quantidade,
+                preco: Number(it.preco_unitario)
+              }));
+
+            return {
+              dbId: o.id,
+              id: o.codigo_pedido,
+              clienteNome: o.cliente_nome,
+              clienteWhatsapp: o.cliente_whatsapp,
+              clienteCep: o.cliente_cep,
+              clienteEndereco: o.cliente_endereco,
+              itens: orderItems,
+              subtotal: Number(o.valor_produtos),
+              frete: Number(o.valor_frete),
+              total: Number(o.valor_total),
+              status: o.status || 'Aguardando Pagamento',
+              codigoRastreio: o.codigo_rastreio || '',
+              criadoEm: o.criado_em
+                ? new Date(o.criado_em).toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : 'Recente'
+            };
+          })
+        );
+      }
+
+      if (cfgRes.data) {
+        setConfig((prev) => ({
+          ...prev,
+          nomeLoja: cfgRes.data.nome_loja || prev.nomeLoja,
+          subtitulo: cfgRes.data.subtitulo || prev.subtitulo,
+          whatsapp: cfgRes.data.whatsapp || prev.whatsapp,
+          freteBase: Number(cfgRes.data.frete_fixo ?? prev.freteBase),
+          freteGratisAcima: Number(cfgRes.data.frete_gratis_acima ?? prev.freteGratisAcima)
+        }));
+      }
+    } catch {
+      showToast('Erro ao carregar dados do Supabase');
+    } finally {
+      setLoadingData(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    loadAllFromSupabase();
+  }, [loadAllFromSupabase]);
+
+  useEffect(() => {
+    if (!pendingOrder || pendingOrder.status !== 'Aguardando Pagamento' || !supabase) return;
+
+    const timer = setInterval(async () => {
+      const { data } = await supabase
+        .from('pedidos')
+        .select('status')
+        .eq('codigo_pedido', pendingOrder.id)
         .single();
 
-      if (error) throw error;
-      setCategorias((prev) =>
-        [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
-      );
-      setNovaCategoriaNome("");
-      mostrarToast(`Categoria "${data.nome}" criada.`, "sucesso");
-    } catch (err) {
-      console.error(err);
-      mostrarToast(
-        err?.message ||
-          "Não foi possível criar (verifique se a categoria já existe).",
-        "erro"
-      );
-    } finally {
-      setCriandoCategoria(false);
-    }
-  }
+      if (data && data.status !== 'Aguardando Pagamento') {
+        setPendingOrder((prev) => (prev ? { ...prev, status: data.status } : null));
+        setOrders((prev) =>
+          prev.map((o) => (o.id === pendingOrder.id ? { ...o, status: data.status } : o))
+        );
+        showToast(`Pix confirmado! Pedido ${pendingOrder.id} agora está "${data.status}".`);
+      }
+    }, 5000);
 
-  async function handleExcluirCategoria(id) {
-    try {
-      const { error } = await supabase
-        .from("categorias")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
-      setCategorias((prev) => prev.filter((c) => c.id !== id));
-      mostrarToast("Categoria removida.", "sucesso");
-    } catch (err) {
-      console.error(err);
-      mostrarToast(
-        "Não foi possível excluir a categoria (verifique se há produtos vinculados).",
-        "erro"
-      );
-    }
-  }
+    return () => clearInterval(timer);
+  }, [pendingOrder, showToast]);
 
-  async function handleUploadFoto(e) {
-    const arquivo = e.target.files?.[0];
-    if (!arquivo) return;
-    setEnviandoFoto(true);
+  const subtotal = useMemo(
+    () => cart.reduce((acc, item) => acc + item.preco * item.quantidade, 0),
+    [cart]
+  );
+
+  const freteAtual = useMemo(() => {
+    if (cart.length === 0) return 0;
+    if (subtotal >= config.freteGratisAcima) return 0;
+    if (freteCalculado !== null) return freteCalculado;
+    return config.freteBase;
+  }, [cart.length, subtotal, config.freteGratisAcima, config.freteBase, freteCalculado]);
+
+  const totalCarrinho = subtotal + freteAtual;
+  const totalItensCarrinho = cart.reduce((acc, item) => acc + item.quantidade, 0);
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((prod) => {
+      if (!prod.ativo) return false;
+      const matchesCategory = selectedCategory === 'Todos' || prod.categoria === selectedCategory;
+      const term = searchTerm.trim().toLowerCase();
+      const matchesSearch =
+        !term ||
+        prod.nome.toLowerCase().includes(term) ||
+        prod.descricao.toLowerCase().includes(term) ||
+        prod.categoria.toLowerCase().includes(term);
+      return matchesCategory && matchesSearch;
+    });
+  }, [products, selectedCategory, searchTerm]);
+
+  const metrics = useMemo(() => {
+    const validOrders = orders.filter((o) => o.status !== 'Aguardando Pagamento');
+    const faturamento = validOrders.reduce((acc, o) => acc + Number(o.total || 0), 0);
+    const vendasCount = validOrders.length;
+    const ticketMedio = vendasCount > 0 ? faturamento / vendasCount : 0;
+    const emProducao = orders.filter((o) => o.status === 'Em Produção').length;
+    return { faturamento, vendasCount, ticketMedio, emProducao };
+  }, [orders]);
+
+  // Upload direto para Supabase Storage
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!supabase) {
+      showToast('Supabase não conectado');
+      return;
+    }
+
+    setUploadingImage(true);
     try {
-      const extensao = arquivo.name.split(".").pop() || "jpg";
-      const nomeArquivo = `${Date.now()}-${Math.random()
-        .toString(36)
-        .substring(2, 8)}.${extensao}`;
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const safeName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
-        .from(BUCKET_PRODUTOS)
-        .upload(nomeArquivo, arquivo, {
-          cacheControl: "3600",
-          upsert: false,
+        .from('produtos')
+        .upload(safeName, file, {
+          cacheControl: '3600',
+          upsert: false
         });
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from(BUCKET_PRODUTOS)
-        .getPublicUrl(nomeArquivo);
+      const { data: publicUrlData } = supabase.storage.from('produtos').getPublicUrl(safeName);
 
-      setFormProduto((prev) => ({
-        ...prev,
-        foto_url: urlData?.publicUrl || "",
-      }));
-      mostrarToast("Foto enviada com sucesso.", "sucesso");
-    } catch (err) {
-      console.error(err);
-      mostrarToast(
-        `Falha no upload da foto: ${err?.message || "verifique o bucket"}`,
-        "erro"
-      );
+      if (publicUrlData?.publicUrl) {
+        setNewProduct((prev) => ({ ...prev, imagem: publicUrlData.publicUrl }));
+        showToast('Foto enviada com sucesso!');
+      }
+    } catch {
+      showToast('Erro ao enviar foto. Verifique se o bucket "produtos" está criado no Storage.');
     } finally {
-      setEnviandoFoto(false);
+      setUploadingImage(false);
+      e.target.value = '';
     }
-  }
+  };
 
-  async function handleSalvarProduto(e) {
+  // CRUD de Categorias
+  const handleAddCategory = async (e) => {
     e.preventDefault();
-    const nomeLimpo = formProduto.nome.trim();
-    const precoNum = Number(
-      String(formProduto.preco).replace(",", ".")
-    );
+    const trimmed = newCategoryName.trim();
+    if (!trimmed || !supabase) return;
 
-    if (!nomeLimpo || Number.isNaN(precoNum) || precoNum <= 0) {
-      mostrarToast("Preencha o nome e um preço válido.", "erro");
-      return;
-    }
-
-    setSalvandoProduto(true);
+    setSavingAction(true);
     try {
-      const payload = {
-        nome: nomeLimpo,
-        preco: precoNum,
-        categoria_id: formProduto.categoria_id || null,
-        prazo_producao:
-          formProduto.prazo_producao.trim() || "3 dias úteis",
-        descricao: formProduto.descricao.trim(),
-        foto_url: formProduto.foto_url.trim(),
-        tem_variacoes: Boolean(formProduto.tem_variacoes),
-        titulo_variacoes:
-          formProduto.titulo_variacoes.trim() || DEFAULT_TITULO_BLOCO,
-        titulo_var_1:
-          formProduto.titulo_var_1.trim() || DEFAULT_TITULO_VAR_1,
-        opcoes_var_1: formProduto.opcoes_var_1.trim(),
-        titulo_var_2:
-          formProduto.titulo_var_2.trim() || DEFAULT_TITULO_VAR_2,
-        opcoes_var_2: formProduto.opcoes_var_2.trim(),
-        titulo_var_3:
-          formProduto.titulo_var_3.trim() || DEFAULT_TITULO_VAR_3,
-        opcoes_var_3: formProduto.opcoes_var_3.trim(),
-      };
-
-      const { data, error } = await supabase
-        .from("produtos")
-        .insert([payload])
-        .select()
-        .single();
-
+      const { error } = await supabase.from('categorias').insert({ nome: trimmed });
       if (error) throw error;
-      setProdutos((prev) => [data, ...prev]);
-      setFormProduto({
-        nome: "",
-        preco: "",
-        categoria_id: categorias[0]?.id || "",
-        prazo_producao: "3 dias úteis",
-        descricao: "",
-        foto_url: "",
-        tem_variacoes: true,
-        titulo_variacoes: DEFAULT_TITULO_BLOCO,
-        titulo_var_1: DEFAULT_TITULO_VAR_1,
-        opcoes_var_1: DEFAULT_OPCOES_VAR_1,
-        titulo_var_2: DEFAULT_TITULO_VAR_2,
-        opcoes_var_2: DEFAULT_OPCOES_VAR_2,
-        titulo_var_3: DEFAULT_TITULO_VAR_3,
-        opcoes_var_3: DEFAULT_OPCOES_VAR_3,
-      });
-      mostrarToast(`Produto "${data.nome}" adicionado à vitrine.`, "sucesso");
-    } catch (err) {
-      console.error(err);
-      mostrarToast(
-        `Não foi possível salvar o produto: ${err?.message || "erro"}`,
-        "erro"
-      );
+      setNewCategoryName('');
+      setNewProduct((prev) => ({ ...prev, categoria: trimmed }));
+      showToast(`Categoria "${trimmed}" criada e já disponível no cadastro de produto!`);
+      await loadAllFromSupabase();
+    } catch {
+      showToast('Não foi possível criar (verifique se a categoria já existe).');
     } finally {
-      setSalvandoProduto(false);
+      setSavingAction(false);
     }
-  }
+  };
 
-  async function handleExcluirProduto(id) {
+  const handleRenameCategory = async (e) => {
+    e.preventDefault();
+    if (!editingCategory || !editingCategory.nome.trim() || !supabase) return;
+
+    const novoNome = editingCategory.nome.trim();
+    const nomeAntigo = editingCategory.nomeOriginal;
+
+    setSavingAction(true);
     try {
-      const { error } = await supabase.from("produtos").delete().eq("id", id);
+      const { error } = await supabase
+        .from('categorias')
+        .update({ nome: novoNome })
+        .eq('id', editingCategory.id);
+
       if (error) throw error;
-      setProdutos((prev) => prev.filter((p) => p.id !== id));
-      mostrarToast("Produto excluído.", "sucesso");
-    } catch (err) {
-      console.error(err);
-      mostrarToast("Não foi possível excluir o produto.", "erro");
+
+      if (nomeAntigo && nomeAntigo !== novoNome) {
+        await supabase.from('produtos').update({ categoria: novoNome }).eq('categoria', nomeAntigo);
+      }
+
+      setEditingCategory(null);
+      showToast(`Categoria atualizada para "${novoNome}"!`);
+      await loadAllFromSupabase();
+    } catch {
+      showToast('Erro ao renomear categoria');
+    } finally {
+      setSavingAction(false);
     }
-  }
+  };
 
-  function obterVariacoesProduto(produto) {
-    if (!produto.tem_variacoes) return [];
-    const grupos = [
-      {
-        chave: "var1",
-        titulo: produto.titulo_var_1 || DEFAULT_TITULO_VAR_1,
-        opcoes: parseCsvOptions(produto.opcoes_var_1),
-      },
-      {
-        chave: "var2",
-        titulo: produto.titulo_var_2 || DEFAULT_TITULO_VAR_2,
-        opcoes: parseCsvOptions(produto.opcoes_var_2),
-      },
-      {
-        chave: "var3",
-        titulo: produto.titulo_var_3 || DEFAULT_TITULO_VAR_3,
-        opcoes: parseCsvOptions(produto.opcoes_var_3),
-      },
-    ];
-    return grupos.filter((g) => g.opcoes.length > 0);
-  }
+  const handleDeleteCategory = async (cat) => {
+    if (!supabase) return;
+    setSavingAction(true);
+    try {
+      const { error } = await supabase.from('categorias').delete().eq('id', cat.id);
+      if (error) throw error;
+      if (selectedCategory === cat.nome) {
+        setSelectedCategory('Todos');
+      }
+      showToast(`Categoria "${cat.nome}" removida!`);
+      await loadAllFromSupabase();
+    } catch {
+      showToast('Erro ao excluir categoria');
+    } finally {
+      setSavingAction(false);
+    }
+  };
 
-  function handleAlterarSelecaoVitrine(produtoId, chaveVar, valor) {
-    setSelecoesVitrine((prev) => ({
+  const getVariantChoice = (product) => {
+    const saved = selectedVariantsByProduct[product.id] || {};
+    return {
+      quantidade: saved.quantidade || product.opcoesQuantidade?.[0] || DEFAULT_QTY_OPTIONS[0],
+      cor: saved.cor || product.opcoesCor?.[0] || DEFAULT_COLOR_OPTIONS[0],
+      tamanho: saved.tamanho || product.opcoesTamanho?.[0] || DEFAULT_SIZE_OPTIONS[0]
+    };
+  };
+
+  const handleVariantChange = (productId, field, value) => {
+    setSelectedVariantsByProduct((prev) => ({
       ...prev,
-      [produtoId]: {
-        ...(prev[produtoId] || {}),
-        [chaveVar]: valor,
-      },
+      [productId]: {
+        ...(prev[productId] || {}),
+        [field]: value
+      }
     }));
-  }
+  };
 
-  function handleAdicionarSacola(produto) {
-    const grupos = obterVariacoesProduto(produto);
-    const selAtual = selecoesVitrine[produto.id] || {};
-    const escolhidas = {};
+  const handleAddToCart = (product) => {
+    let labelResumo = '';
+    let cartKey = product.id;
 
-    for (const g of grupos) {
-      escolhidas[g.titulo] = selAtual[g.chave] || g.opcoes[0];
+    if (product.variacoesAtivas) {
+      const chosen = getVariantChoice(product);
+      labelResumo = `${chosen.quantidade} • ${chosen.cor} • ${chosen.tamanho}`;
+      cartKey = `${product.id}__${chosen.quantidade}__${chosen.cor}__${chosen.tamanho}`;
     }
 
-    const resumoVariacoes = Object.entries(escolhidas)
-      .map(([tit, val]) => `${tit}: ${val}`)
-      .join(" • ");
-
-    const chaveItem = `${produto.id}__${resumoVariacoes}`;
-
-    setSacola((prev) => {
-      const existente = prev.find((item) => item.chaveItem === chaveItem);
-      if (existente) {
+    setCart((prev) => {
+      const existing = prev.find((item) => item.cartKey === cartKey);
+      if (existing) {
         return prev.map((item) =>
-          item.chaveItem === chaveItem
-            ? { ...item, quantidade: item.quantidade + 1 }
-            : item
+          item.cartKey === cartKey ? { ...item, quantidade: item.quantidade + 1 } : item
         );
       }
       return [
         ...prev,
         {
-          chaveItem,
-          produto_id: produto.id,
-          nome: produto.nome,
-          preco_unitario: Number(produto.preco),
-          foto_url: produto.foto_url || "",
-          resumo_variacoes: resumoVariacoes,
-          quantidade: 1,
-        },
+          cartKey,
+          id: product.id,
+          nome: labelResumo ? `${product.nome} (${labelResumo})` : product.nome,
+          preco: product.preco,
+          imagem: product.imagem,
+          quantidade: 1
+        }
       ];
     });
+    showToast(`"${product.nome}" adicionado à sacola`);
+  };
 
-    setSacolaAberta(true);
-    mostrarToast(`"${produto.nome}" adicionado à sacola.`, "sucesso");
-  }
-
-  function handleAlterarQtdSacola(chaveItem, delta) {
-    setSacola((prev) =>
+  const handleUpdateQty = (cartKey, delta) => {
+    setCart((prev) =>
       prev
         .map((item) =>
-          item.chaveItem === chaveItem
-            ? { ...item, quantidade: item.quantidade + delta }
+          item.cartKey === cartKey
+            ? { ...item, quantidade: Math.max(0, item.quantidade + delta) }
             : item
         )
         .filter((item) => item.quantidade > 0)
     );
-  }
+  };
 
-  const subtotalSacola = useMemo(
-    () =>
-      sacola.reduce(
-        (acc, item) => acc + Number(item.preco_unitario) * item.quantidade,
-        0
-      ),
-    [sacola]
-  );
+  const handleRemoveFromCart = (cartKey) => {
+    setCart((prev) => prev.filter((item) => item.cartKey !== cartKey));
+  };
 
-  const valorFrete = useMemo(() => {
-    if (subtotalSacola <= 0) return 0;
-    const limiteGratis = Number(configLoja.frete_gratis_acima_de || 0);
-    if (limiteGratis > 0 && subtotalSacola >= limiteGratis) return 0;
-    return Number(configLoja.frete_fixo || 0);
-  }, [subtotalSacola, configLoja]);
-
-  const totalPedidoSacola = subtotalSacola + valorFrete;
-
-  async function handleFinalizarPedido(e) {
+  const handleCalcularFrete = (e) => {
     e.preventDefault();
-    if (sacola.length === 0) {
-      mostrarToast("Sua sacola está vazia.", "erro");
+    const cleanCep = cepInput.replace(/\D/g, '');
+    if (cleanCep.length < 8) {
+      showToast('Digite um CEP válido com 8 números');
       return;
     }
-    if (!clienteNome.trim() || !clienteWhatsapp.trim()) {
-      mostrarToast("Preencha nome e WhatsApp.", "erro");
+    if (subtotal >= config.freteGratisAcima) {
+      setFreteCalculado(0);
+      showToast('Parabéns! Você ganhou frete grátis');
+      return;
+    }
+    const lastDigit = Number(cleanCep[cleanCep.length - 1]);
+    const variacao = lastDigit % 2 === 0 ? 0 : 4;
+    const valorFinal = Number(config.freteBase) + variacao;
+    setFreteCalculado(valorFinal);
+    showToast(`Frete calculado para CEP ${cepInput}: ${formatBRL(valorFinal)}`);
+  };
+
+  const handleOpenCheckout = () => {
+    if (cart.length === 0) return;
+    setCheckoutForm((prev) => ({
+      ...prev,
+      clienteCep: cepInput || prev.clienteCep
+    }));
+    setIsCartOpen(false);
+    setIsCheckoutOpen(true);
+  };
+
+  const handleCreatePixOrder = async (e) => {
+    e.preventDefault();
+    if (!checkoutForm.clienteNome.trim() || !checkoutForm.clienteWhatsapp.trim()) {
+      showToast('Preencha nome e WhatsApp para gerar o pedido');
+      return;
+    }
+    if (!supabase) {
+      showToast('Supabase não conectado');
       return;
     }
 
-    setFinalizandoPedido(true);
+    setSavingAction(true);
+    const randomNum = Math.floor(1050 + Math.random() * 8900);
+    const codigoPedido = `PED-${randomNum}`;
+
     try {
-      const codigo = gerarCodigoPedido();
-      const { data: pedidoCriado, error: pedErr } = await supabase
-        .from("pedidos")
-        .insert([
-          {
-            codigo,
-            cliente_nome: clienteNome.trim(),
-            cliente_whatsapp: clienteWhatsapp.trim(),
-            cliente_cep: clienteCep.trim(),
-            cliente_endereco: clienteEndereco.trim(),
-            observacao: clienteObservacao.trim(),
-            subtotal: subtotalSacola,
-            frete: valorFrete,
-            total: totalPedidoSacola,
-            status: "Aguardando Pagamento",
-            codigo_rastreio: "",
-          },
-        ])
+      const pixRes = await fetch('/api/criar-pix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          codigoPedido,
+          valorTotal: totalCarrinho,
+          clienteNome: checkoutForm.clienteNome.trim(),
+          clienteEmail: checkoutForm.clienteEmail.trim() || 'cliente@santopapelcolorido.com.br'
+        })
+      });
+
+      const pixData = await pixRes.json();
+      if (!pixRes.ok) {
+        throw new Error(pixData.error || 'Falha ao gerar Pix no Mercado Pago');
+      }
+
+      const { data: insertedOrder, error: orderErr } = await supabase
+        .from('pedidos')
+        .insert({
+          codigo_pedido: codigoPedido,
+          cliente_nome: checkoutForm.clienteNome.trim(),
+          cliente_whatsapp: checkoutForm.clienteWhatsapp.trim(),
+          cliente_cep: checkoutForm.clienteCep.trim() || '12300-000',
+          cliente_endereco: checkoutForm.clienteEndereco.trim() || 'Retirada / A combinar',
+          valor_produtos: subtotal,
+          valor_frete: freteAtual,
+          valor_total: totalCarrinho,
+          status: 'Aguardando Pagamento',
+          mp_payment_id: pixData.paymentId
+        })
         .select()
         .single();
 
-      if (pedErr) throw pedErr;
+      if (orderErr) throw orderErr;
 
-      const linhasItens = sacola.map((item) => ({
-        pedido_id: pedidoCriado.id,
-        produto_id: item.produto_id,
+      const itensPayload = cart.map((item) => ({
+        pedido_id: insertedOrder.id,
+        produto_id: item.id,
         nome_produto: item.nome,
-        variacoes_texto: item.resumo_variacoes,
         quantidade: item.quantidade,
-        preco_unitario: item.preco_unitario,
+        preco_unitario: item.preco
       }));
 
-      const { error: itensErr } = await supabase
-        .from("itens_pedido")
-        .insert(linhasItens);
+      await supabase.from('itens_pedido').insert(itensPayload);
 
-      if (itensErr) throw itensErr;
-
-      setUltimoPedidoCriado(pedidoCriado);
-      setSacola([]);
-      setClienteNome("");
-      setClienteWhatsapp("");
-      setClienteCep("");
-      setClienteEndereco("");
-      setClienteObservacao("");
-      await carregarTudo();
-      mostrarToast(`Pedido ${codigo} registrado.`, "sucesso");
-    } catch (err) {
-      console.error(err);
-      mostrarToast("Não foi possível concluir o pedido.", "erro");
-    } finally {
-      setFinalizandoPedido(false);
-    }
-  }
-
-  async function handleAtualizarStatusPedido(pedidoId, novoStatus) {
-    try {
-      const { error } = await supabase
-        .from("pedidos")
-        .update({ status: novoStatus })
-        .eq("id", pedidoId);
-      if (error) throw error;
-      setPedidos((prev) =>
-        prev.map((p) =>
-          p.id === pedidoId ? { ...p, status: novoStatus } : p
-        )
-      );
-      mostrarToast("Status do pedido atualizado.", "sucesso");
-    } catch (err) {
-      console.error(err);
-      mostrarToast("Erro ao atualizar status.", "erro");
-    }
-  }
-
-  async function handleSalvarRastreio(pedidoId, rastreioValor) {
-    try {
-      const { error } = await supabase
-        .from("pedidos")
-        .update({ codigo_rastreio: rastreioValor.trim() })
-        .eq("id", pedidoId);
-      if (error) throw error;
-      setPedidos((prev) =>
-        prev.map((p) =>
-          p.id === pedidoId
-            ? { ...p, codigo_rastreio: rastreioValor.trim() }
-            : p
-        )
-      );
-      mostrarToast("Código de rastreio salvo.", "sucesso");
-    } catch (err) {
-      console.error(err);
-      mostrarToast("Erro ao salvar rastreio.", "erro");
-    }
-  }
-
-  async function handleSalvarConfig(e) {
-    e.preventDefault();
-    setSalvandoConfig(true);
-    try {
-      const payload = {
-        id: 1,
-        whatsapp: formConfig.whatsapp.trim(),
-        frete_fixo: Number(String(formConfig.frete_fixo).replace(",", ".")) || 0,
-        frete_gratis_acima_de:
-          Number(String(formConfig.frete_gratis_acima_de).replace(",", ".")) || 0,
+      const newOrderObj = {
+        dbId: insertedOrder.id,
+        id: codigoPedido,
+        clienteNome: insertedOrder.cliente_nome,
+        clienteWhatsapp: insertedOrder.cliente_whatsapp,
+        clienteCep: insertedOrder.cliente_cep,
+        clienteEndereco: insertedOrder.cliente_endereco,
+        itens: cart.map((i) => ({
+          id: i.id,
+          nome: i.nome,
+          quantidade: i.quantidade,
+          preco: i.preco
+        })),
+        subtotal,
+        frete: freteAtual,
+        total: totalCarrinho,
+        status: 'Aguardando Pagamento',
+        codigoRastreio: '',
+        qrCodeCopiaECola: pixData.qrCodeCopiaECola,
+        qrCodeBase64: pixData.qrCodeBase64,
+        criadoEm: 'Agora mesmo'
       };
 
-      const { data, error } = await supabase
-        .from("config_loja")
-        .upsert(payload)
-        .select()
-        .single();
-
-      if (error) throw error;
-      setConfigLoja(data);
-      mostrarToast("Configurações da loja salvas.", "sucesso");
+      setOrders((prev) => [newOrderObj, ...prev]);
+      setPendingOrder(newOrderObj);
+      setCart([]);
+      setFreteCalculado(null);
+      showToast(`Pix gerado para o pedido ${codigoPedido}!`);
     } catch (err) {
-      console.error(err);
-      mostrarToast("Não foi possível salvar as configurações.", "erro");
+      showToast(err.message || 'Erro ao gerar cobrança Pix');
     } finally {
-      setSalvandoConfig(false);
+      setSavingAction(false);
     }
-  }
+  };
 
-  async function handleBuscarPedido(e) {
+  const handleCopyPix = () => {
+    const code = pendingOrder?.qrCodeCopiaECola || '';
+    if (!code) return;
+    navigator.clipboard?.writeText(code).catch(() => {});
+    setCopiedPix(true);
+    setTimeout(() => setCopiedPix(false), 2000);
+  };
+
+  const handleSearchOrder = async (e) => {
     e.preventDefault();
-    const cod = codigoRastreio.trim().toUpperCase();
-    if (!cod) return;
-    setBuscandoPedido(true);
-    try {
-      const { data, error } = await supabase
-        .from("pedidos")
-        .select("*")
-        .ilike("codigo", cod)
-        .maybeSingle();
-      if (error) throw error;
-      setPedidoEncontrado(data || "nao_encontrado");
-    } catch (err) {
-      console.error(err);
-      mostrarToast("Erro ao consultar pedido.", "erro");
-    } finally {
-      setBuscandoPedido(false);
+    const term = trackingQuery.trim().toLowerCase();
+    setTrackingSearched(true);
+    if (!term) {
+      setFoundOrder(null);
+      return;
     }
-  }
-
-  const produtosFiltrados = useMemo(() => {
-    return produtos.filter((prod) => {
-      const bateCategoria =
-        categoriaFiltro === "Todas" || prod.categoria_id === categoriaFiltro;
-      const termo = buscaProduto.trim().toLowerCase();
-      const bateBusca =
-        !termo ||
-        (prod.nome || "").toLowerCase().includes(termo) ||
-        (prod.descricao || "").toLowerCase().includes(termo);
-      return bateCategoria && bateBusca;
-    });
-  }, [produtos, categoriaFiltro, buscaProduto]);
-
-  const metricas = useMemo(() => {
-    const aprovados = pedidos.filter((p) =>
-      ["Pagamento Aprovado", "Em Produção", "Enviado", "Entregue"].includes(
-        p.status
-      )
+    await loadAllFromSupabase();
+    const match = orders.find(
+      (o) =>
+        o.id.toLowerCase() === term ||
+        o.id.toLowerCase().includes(term) ||
+        o.clienteWhatsapp.replace(/\D/g, '').includes(term.replace(/\D/g, ''))
     );
-    const faturamento = aprovados.reduce(
-      (acc, p) => acc + Number(p.total || 0),
-      0
-    );
-    const ticketMedio =
-      aprovados.length > 0 ? faturamento / aprovados.length : 0;
-    const emProducao = pedidos.filter(
-      (p) => p.status === "Em Produção"
-    ).length;
+    setFoundOrder(match || null);
+  };
 
-    return {
-      faturamento,
-      vendasAprovadas: aprovados.length,
-      ticketMedio,
-      emProducao,
+  const handleAdminLogin = (e) => {
+    e.preventDefault();
+    if (adminPassword.trim() === 'santo2026' || adminPassword.trim() === '1234') {
+      setIsAdminAuthenticated(true);
+      setAdminError('');
+      setAdminPassword('');
+    } else {
+      setAdminError('Senha incorreta. Dica para teste: santo2026');
+    }
+  };
+
+  const handleOrderStatusChange = async (orderId, nextStatus) => {
+    if (!supabase) return;
+    await supabase.from('pedidos').update({ status: nextStatus }).eq('codigo_pedido', orderId);
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o))
+    );
+    if (foundOrder?.id === orderId) {
+      setFoundOrder((prev) => (prev ? { ...prev, status: nextStatus } : null));
+    }
+    showToast(`Status do pedido ${orderId} atualizado para "${nextStatus}"`);
+  };
+
+  const handleTrackingCodeChange = async (orderId, code) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, codigoRastreio: code } : o))
+    );
+    if (foundOrder?.id === orderId) {
+      setFoundOrder((prev) => (prev ? { ...prev, codigoRastreio: code } : null));
+    }
+    if (supabase) {
+      await supabase.from('pedidos').update({ codigo_rastreio: code }).eq('codigo_pedido', orderId);
+    }
+  };
+
+  const handleSaveProduct = async (e) => {
+    e.preventDefault();
+    const precoNum = parseFloat(String(newProduct.preco).replace(',', '.'));
+    if (!newProduct.nome.trim() || isNaN(precoNum) || precoNum <= 0) {
+      showToast('Preencha nome e preço válido do produto');
+      return;
+    }
+    if (!supabase) {
+      showToast('Supabase não conectado');
+      return;
+    }
+
+    const categoriaEscolhida = newProduct.categoria || categoryNames[0] || 'Geral';
+    const qtyArr = parseOptionsText(newProduct.qtyOptionsText, DEFAULT_QTY_OPTIONS);
+    const colorArr = parseOptionsText(newProduct.colorOptionsText, DEFAULT_COLOR_OPTIONS);
+    const sizeArr = parseOptionsText(newProduct.sizeOptionsText, DEFAULT_SIZE_OPTIONS);
+
+    const payload = {
+      nome: newProduct.nome.trim(),
+      descricao: newProduct.descricao.trim() || 'Peça artesanal personalizada.',
+      preco: precoNum,
+      categoria: categoriaEscolhida,
+      prazo_producao: newProduct.prazo || '5 dias úteis',
+      imagem_url:
+        newProduct.imagem.trim() ||
+        'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80',
+      variacoes_ativas: Boolean(newProduct.variacoesAtivas),
+      opcoes_quantidade: qtyArr,
+      opcoes_cor: colorArr,
+      opcoes_tamanho: sizeArr
     };
-  }, [pedidos]);
 
-  const totalItensSacola = sacola.reduce((acc, i) => acc + i.quantidade, 0);
+    setSavingAction(true);
+    try {
+      if (editingProductId) {
+        const { error } = await supabase
+          .from('produtos')
+          .update(payload)
+          .eq('id', editingProductId);
+
+        if (error) throw error;
+        setEditingProductId(null);
+        showToast('Produto atualizado!');
+      } else {
+        const { error } = await supabase.from('produtos').insert({
+          ...payload,
+          ativo: true
+        });
+
+        if (error) throw error;
+        showToast('Produto salvo na vitrine!');
+      }
+
+      setNewProduct(emptyProductForm(categoriaEscolhida));
+      await loadAllFromSupabase();
+    } catch (err) {
+      showToast(err?.message || 'Erro ao salvar produto. Rode o SQL da Etapa 1 no Supabase.');
+    } finally {
+      setSavingAction(false);
+    }
+  };
+
+  const handleStartEditProduct = (prod) => {
+    setEditingProductId(prod.id);
+    setNewProduct({
+      nome: prod.nome,
+      descricao: prod.descricao,
+      preco: String(prod.preco),
+      categoria: prod.categoria,
+      prazo: prod.prazo,
+      imagem: prod.imagem,
+      variacoesAtivas: Boolean(prod.variacoesAtivas),
+      qtyOptionsText: (prod.opcoesQuantidade || DEFAULT_QTY_OPTIONS).join(', '),
+      colorOptionsText: (prod.opcoesCor || DEFAULT_COLOR_OPTIONS).join(', '),
+      sizeOptionsText: (prod.opcoesTamanho || DEFAULT_SIZE_OPTIONS).join(', ')
+    });
+  };
+
+  const handleToggleProductActive = async (prod) => {
+    if (!supabase) return;
+    const nextActive = !prod.ativo;
+    await supabase.from('produtos').update({ ativo: nextActive }).eq('id', prod.id);
+    setProducts((prev) => prev.map((p) => (p.id === prod.id ? { ...p, ativo: nextActive } : p)));
+  };
+
+  const handleSaveConfig = async (updatedFields) => {
+    const nextCfg = { ...config, ...updatedFields };
+    setConfig(nextCfg);
+    if (supabase) {
+      await supabase
+        .from('config_loja')
+        .update({
+          nome_loja: nextCfg.nomeLoja,
+          subtitulo: nextCfg.subtitulo,
+          frete_fixo: nextCfg.freteBase,
+          frete_gratis_acima: nextCfg.freteGratisAcima
+        })
+        .eq('id', 1);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#FAF6F0] text-[#3B2F2F] flex flex-col">
-      <header className="bg-[#FFFDF9] border-b border-[#EADFD3] sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-serif font-semibold text-[#4A2E2B]">
-              Santo Papel Colorido
-            </h1>
-            <p className="text-xs italic text-[#8C6D62]">
-              Detalhes que encantam
-            </p>
-          </div>
+    <div
+      className="min-h-screen text-[#4A3B32] flex flex-col"
+      style={{
+        backgroundColor: '#FAF6F2',
+        fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif"
+      }}
+    >
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Dancing+Script:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+      `}</style>
 
-          <nav className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setAbaAtiva("vitrine")}
-              className={`px-3.5 py-1.5 rounded-lg text-sm border transition ${
-                abaAtiva === "vitrine"
-                  ? "bg-[#4A2E2B] text-white border-[#4A2E2B]"
-                  : "bg-white text-[#4A2E2B] border-[#DFCFC0]"
-              }`}
-            >
-              Vitrine
-            </button>
-            <button
-              type="button"
-              onClick={() => setAbaAtiva("acompanhar")}
-              className={`px-3.5 py-1.5 rounded-lg text-sm border transition ${
-                abaAtiva === "acompanhar"
-                  ? "bg-[#4A2E2B] text-white border-[#4A2E2B]"
-                  : "bg-white text-[#4A2E2B] border-[#DFCFC0]"
-              }`}
-            >
-              Acompanhar Pedido
-            </button>
-            <button
-              type="button"
-              onClick={() => setAbaAtiva("painel")}
-              className={`px-3.5 py-1.5 rounded-lg text-sm border transition ${
-                abaAtiva === "painel"
-                  ? "bg-[#4A2E2B] text-white border-[#4A2E2B]"
-                  : "bg-white text-[#4A2E2B] border-[#DFCFC0]"
-              }`}
-            >
-              Painel Ateliê
-            </button>
-            <button
-              type="button"
-              onClick={() => setSacolaAberta(true)}
-              className="px-3.5 py-1.5 rounded-lg text-sm bg-[#C98A7E] text-white font-medium hover:bg-[#B8776A] transition"
-            >
-              Sacola ({totalItensSacola})
-            </button>
-          </nav>
-        </div>
-      </header>
-
-      {toast && (
-        <div className="fixed bottom-5 right-5 z-50 max-w-sm bg-[#2D2220] text-white text-sm px-4 py-3 rounded-xl shadow-lg border border-white/10">
-          {toast.mensagem}
+      {toastMsg && (
+        <div className="fixed bottom-5 right-5 z-50 bg-[#4A3B32] text-[#FAF6F2] px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 text-sm border border-[#C99649]/40">
+          <Sparkles className="w-4 h-4 text-[#C99649] shrink-0" />
+          <span>{toastMsg}</span>
         </div>
       )}
 
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
-        {abaAtiva === "vitrine" && (
-          <div className="space-y-6">
-            <div className="bg-white border border-[#EADFD3] rounded-2xl p-4 flex flex-col md:flex-row gap-3 justify-between">
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCategoriaFiltro("Todas")}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
-                    categoriaFiltro === "Todas"
-                      ? "bg-[#4A2E2B] text-white border-[#4A2E2B]"
-                      : "bg-[#FAF6F0] text-[#5C4642] border-[#E4D5C7]"
-                  }`}
+      <header className="sticky top-0 z-30 bg-[#FAF6F2]/95 backdrop-blur border-b border-[#E8DDD4]">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setActiveTab('vitrine')}
+            className="text-left focus:outline-none"
+          >
+            <BrandLogo />
+          </button>
+
+          <nav className="flex items-center gap-1.5 sm:gap-2 bg-[#F3EAE2] p-1 rounded-xl border border-[#E4D6C9]">
+            <button
+              type="button"
+              onClick={() => setActiveTab('vitrine')}
+              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 ${
+                activeTab === 'vitrine'
+                  ? 'bg-[#D48C84] text-white shadow-sm'
+                  : 'text-[#4A3B32] hover:bg-white/60'
+              }`}
+            >
+              <Store className="w-4 h-4" />
+              <span>Vitrine</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('rastreio')}
+              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 ${
+                activeTab === 'rastreio'
+                  ? 'bg-[#6A8E96] text-white shadow-sm'
+                  : 'text-[#4A3B32] hover:bg-white/60'
+              }`}
+            >
+              <Package className="w-4 h-4" />
+              <span>Acompanhar Pedido</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('admin')}
+              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 ${
+                activeTab === 'admin'
+                  ? 'bg-[#4A3B32] text-[#FAF6F2] shadow-sm'
+                  : 'text-[#4A3B32] hover:bg-white/60'
+              }`}
+            >
+              <Lock className="w-3.5 h-3.5 text-[#C99649]" />
+              <span>Painel Ateliê</span>
+            </button>
+          </nav>
+
+          <button
+            type="button"
+            onClick={() => setIsCartOpen(true)}
+            className="relative bg-[#D48C84] hover:bg-[#c57b73] text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition flex items-center gap-2"
+          >
+            <ShoppingBag className="w-4 h-4" />
+            <span>Sacola</span>
+            {totalItensCarrinho > 0 && (
+              <span className="bg-[#4A3B32] text-[#FAF6F2] text-xs font-bold px-2 py-0.5 rounded-full">
+                {totalItensCarrinho}
+              </span>
+            )}
+          </button>
+        </div>
+      </header>
+
+      {activeTab === 'vitrine' && (
+        <main className="flex-1">
+          <section className="max-w-6xl mx-auto px-4 pt-6 pb-4">
+            <div className="rounded-3xl bg-gradient-to-r from-[#F5EAE3] via-[#FAF6F2] to-[#EAF1F3] border border-[#E6D8CC] p-6 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="max-w-xl space-y-3">
+                <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider font-semibold px-3 py-1 rounded-full bg-[#6A8E96]/15 text-[#4E6E75]">
+                  <Sparkles className="w-3.5 h-3.5 text-[#C99649]" />
+                  Papelaria Criativa &amp; Feita à Mão
+                </span>
+                <h1
+                  className="text-3xl sm:text-5xl font-semibold text-[#4A3B32] leading-tight"
+                  style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
                 >
-                  Todas
-                </button>
-                {categorias.map((cat) => (
+                  {config.nomeLoja} — {config.subtitulo}
+                </h1>
+                <p className="text-sm sm:text-base text-[#6B584C] leading-relaxed">
+                  Escolha suas peças, calcule o frete, finalize o pagamento com Pix e acompanhe cada etapa da produção até a entrega em um só lugar.
+                </p>
+                <div className="pt-1 flex flex-wrap items-center gap-3 text-xs text-[#6B584C]">
+                  <span className="bg-white/80 border border-[#E6D8CC] px-3 py-1.5 rounded-lg">
+                    Frete grátis acima de <strong>{formatBRL(config.freteGratisAcima)}</strong>
+                  </span>
+                </div>
+              </div>
+
+              <div className="w-full md:w-80 rounded-2xl overflow-hidden shadow-md border border-[#E2D3C5] bg-white shrink-0">
+                <img
+                  src="https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80"
+                  alt="Papelaria artesanal Santo Papel Colorido"
+                  className="w-full h-48 object-cover"
+                />
+                <div className="p-3.5 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-[#4A3B32]">Coleção Afetiva</span>
+                  <span className="text-[#C99649] font-semibold">Produção sob encomenda</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="max-w-6xl mx-auto px-4 py-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {['Todos', ...categoryNames].map((cat) => (
                   <button
-                    key={cat.id}
+                    key={cat}
                     type="button"
-                    onClick={() => setCategoriaFiltro(cat.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
-                      categoriaFiltro === cat.id
-                        ? "bg-[#4A2E2B] text-white border-[#4A2E2B]"
-                        : "bg-[#FAF6F0] text-[#5C4642] border-[#E4D5C7]"
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-4 py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition border ${
+                      selectedCategory === cat
+                        ? 'bg-[#D48C84] text-white border-[#D48C84]'
+                        : 'bg-white text-[#4A3B32] border-[#E5D7CA] hover:border-[#D48C84]'
                     }`}
                   >
-                    {cat.nome}
+                    {cat}
                   </button>
                 ))}
               </div>
 
-              <input
-                type="text"
-                value={buscaProduto}
-                onChange={(e) => setBuscaProduto(e.target.value)}
-                placeholder="Buscar produto..."
-                className="border border-[#DFCFC0] rounded-lg px-3 py-1.5 text-sm bg-[#FFFDF9] w-full md:w-64"
-              />
+              <div className="relative w-full md:w-72">
+                <Search className="w-4 h-4 text-[#8B7669] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar item..."
+                  className="w-full pl-10 pr-4 py-2 rounded-xl bg-white border border-[#E5D7CA] text-sm focus:outline-none focus:border-[#D48C84]"
+                />
+              </div>
             </div>
+          </section>
 
-            {produtosFiltrados.length === 0 ? (
-              <div className="bg-white border border-[#EADFD3] rounded-2xl p-8 text-center text-sm text-[#7A625B]">
-                Nenhum produto encontrado nesta seleção.
+          <section className="max-w-6xl mx-auto px-4 pb-14">
+            {loadingData ? (
+              <div className="bg-white rounded-2xl border border-[#E5D7CA] p-10 text-center text-sm text-[#6B584C]">
+                Carregando catálogo do ateliê...
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-[#E5D7CA] p-10 text-center space-y-2">
+                <p className="font-semibold text-base">Nenhum produto ativo encontrado.</p>
+                <p className="text-xs text-[#6B584C]">
+                  Cadastre seus primeiros itens na aba <strong>Painel Ateliê &gt; Produtos</strong>.
+                </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {produtosFiltrados.map((prod) => {
-                  const grupos = obterVariacoesProduto(prod);
-                  const selAtual = selecoesVitrine[prod.id] || {};
-                  const tituloBloco =
-                    prod.titulo_variacoes || DEFAULT_TITULO_BLOCO;
-
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredProducts.map((product) => {
+                  const choice = getVariantChoice(product);
                   return (
                     <article
-                      key={prod.id}
-                      className="bg-white border border-[#EADFD3] rounded-2xl overflow-hidden flex flex-col justify-between shadow-xs"
+                      key={product.id}
+                      className="bg-white rounded-2xl border border-[#E8DBD0] overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between"
                     >
                       <div>
-                        {prod.foto_url ? (
+                        <div className="relative h-48 bg-[#F4ECE5] overflow-hidden">
                           <img
-                            src={prod.foto_url}
-                            alt={prod.nome}
-                            className="w-full h-52 object-cover bg-[#F6EFE8]"
+                            src={product.imagem}
+                            alt={product.nome}
+                            className="w-full h-full object-cover hover:scale-105 transition duration-300"
                           />
-                        ) : (
-                          <div className="w-full h-52 bg-[#F6EFE8] flex items-center justify-center text-xs text-[#8C6D62]">
-                            Sem foto
+                          <span className="absolute top-3 left-3 bg-[#FAF6F2]/95 text-[#4A3B32] text-[11px] font-semibold px-2.5 py-1 rounded-full border border-[#E5D7CA]">
+                            {product.categoria}
+                          </span>
+                        </div>
+
+                        <div className="p-4 space-y-2.5">
+                          <h2
+                            className="text-xl font-semibold text-[#4A3B32] leading-snug"
+                            style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+                          >
+                            {product.nome}
+                          </h2>
+                          <p className="text-xs text-[#6B584C] line-clamp-2 leading-relaxed">
+                            {product.descricao}
+                          </p>
+                          <div className="flex items-center gap-1.5 text-[11px] text-[#6A8E96] font-medium">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Prazo: {product.prazo}</span>
                           </div>
-                        )}
 
-                        <div className="p-4 space-y-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <h2 className="font-semibold text-base text-[#3B2F2F]">
-                              {prod.nome}
-                            </h2>
-                            <span className="font-semibold text-[#4A2E2B] whitespace-nowrap">
-                              {formatBRL(prod.preco)}
-                            </span>
-                          </div>
+                          {product.variacoesAtivas && (
+                            <div className="pt-2 space-y-2 border-t border-[#F3ECE5]">
+                              <div>
+                                <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
+                                  Quantidade referente
+                                </label>
+                                <select
+                                  value={choice.quantidade}
+                                  onChange={(e) =>
+                                    handleVariantChange(product.id, 'quantidade', e.target.value)
+                                  }
+                                  className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-[#FAF6F2] text-xs text-[#4A3B32]"
+                                >
+                                  {(product.opcoesQuantidade || DEFAULT_QTY_OPTIONS).map((opt) => (
+                                    <option key={opt} value={opt}>
+                                      {opt}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
 
-                          {prod.prazo_producao && (
-                            <p className="text-xs text-[#8C6D62]">
-                              Prazo: {prod.prazo_producao}
-                            </p>
-                          )}
-
-                          {prod.descricao && (
-                            <p className="text-xs text-[#5E4A46] leading-relaxed">
-                              {prod.descricao}
-                            </p>
-                          )}
-
-                          {grupos.length > 0 && (
-                            <div className="pt-2 border-t border-[#F1E7DC] space-y-2.5">
-                              <p className="text-xs font-semibold text-[#4A2E2B]">
-                                {tituloBloco}
-                              </p>
-                              {grupos.map((grupo) => (
-                                <div key={grupo.chave} className="space-y-1">
-                                  <label className="block text-xs text-[#6E5650]">
-                                    {grupo.titulo}
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
+                                    Cor
                                   </label>
                                   <select
-                                    value={
-                                      selAtual[grupo.chave] ||
-                                      grupo.opcoes[0]
-                                    }
+                                    value={choice.cor}
                                     onChange={(e) =>
-                                      handleAlterarSelecaoVitrine(
-                                        prod.id,
-                                        grupo.chave,
-                                        e.target.value
-                                      )
+                                      handleVariantChange(product.id, 'cor', e.target.value)
                                     }
-                                    className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-[#FFFDF9]"
+                                    className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-[#FAF6F2] text-xs text-[#4A3B32]"
                                   >
-                                    {grupo.opcoes.map((op) => (
-                                      <option key={op} value={op}>
-                                        {op}
+                                    {(product.opcoesCor || DEFAULT_COLOR_OPTIONS).map((opt) => (
+                                      <option key={opt} value={opt}>
+                                        {opt}
                                       </option>
                                     ))}
                                   </select>
                                 </div>
-                              ))}
+
+                                <div>
+                                  <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
+                                    Tamanho
+                                  </label>
+                                  <select
+                                    value={choice.tamanho}
+                                    onChange={(e) =>
+                                      handleVariantChange(product.id, 'tamanho', e.target.value)
+                                    }
+                                    className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-[#FAF6F2] text-xs text-[#4A3B32]"
+                                  >
+                                    {(product.opcoesTamanho || DEFAULT_SIZE_OPTIONS).map((opt) => (
+                                      <option key={opt} value={opt}>
+                                        {opt}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>
                       </div>
 
-                      <div className="p-4 pt-0">
+                      <div className="px-4 pb-4 pt-2 border-t border-[#F3ECE5] flex items-center justify-between gap-2">
+                        <div>
+                          <span className="block text-[11px] text-[#8B7669]">Valor</span>
+                          <strong className="text-base font-bold text-[#4A3B32]">
+                            {formatBRL(product.preco)}
+                          </strong>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => handleAdicionarSacola(prod)}
-                          className="w-full py-2 rounded-xl bg-[#C98A7E] text-white text-sm font-medium hover:bg-[#B8776A] transition"
+                          onClick={() => handleAddToCart(product)}
+                          className="bg-[#4A3B32] hover:bg-[#362a23] text-[#FAF6F2] px-3.5 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5"
                         >
-                          Adicionar à Sacola
+                          <Plus className="w-3.5 h-3.5 text-[#C99649]" />
+                          <span>Adicionar</span>
                         </button>
                       </div>
                     </article>
@@ -886,639 +1129,293 @@ export default function App() {
                 })}
               </div>
             )}
-          </div>
-        )}
+          </section>
+        </main>
+      )}
 
-        {abaAtiva === "acompanhar" && (
-          <div className="max-w-xl mx-auto bg-white border border-[#EADFD3] rounded-2xl p-6 space-y-4">
-            <h2 className="text-lg font-serif font-semibold text-[#4A2E2B]">
-              Acompanhar Pedido
-            </h2>
-            <form onSubmit={handleBuscarPedido} className="flex gap-2">
+      {activeTab === 'rastreio' && (
+        <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-10">
+          <div className="bg-white rounded-3xl border border-[#E6D8CC] p-6 sm:p-8 shadow-sm space-y-6">
+            <div className="space-y-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#6A8E96]">
+                Consulta Autônoma
+              </span>
+              <h1
+                className="text-3xl font-semibold text-[#4A3B32]"
+                style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+              >
+                Acompanhar meu Pedido
+              </h1>
+              <p className="text-sm text-[#6B584C]">
+                Digite o código do pedido (ex.: <strong>PED-1050</strong>) ou o WhatsApp cadastrado.
+              </p>
+            </div>
+
+            <form onSubmit={handleSearchOrder} className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
-                value={codigoRastreio}
-                onChange={(e) => setCodigoRastreio(e.target.value)}
-                placeholder="Ex.: SPC-12345-ABCD"
-                className="flex-1 border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm"
+                value={trackingQuery}
+                onChange={(e) => setTrackingQuery(e.target.value)}
+                placeholder="Ex.: PED-1050 ou (12) 99999-0000"
+                className="flex-1 px-4 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm focus:outline-none focus:border-[#6A8E96]"
               />
               <button
                 type="submit"
-                disabled={buscandoPedido}
-                className="px-4 py-2 rounded-lg bg-[#4A2E2B] text-white text-sm"
+                className="bg-[#6A8E96] hover:bg-[#597a82] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2"
               >
-                {buscandoPedido ? "Buscando..." : "Consultar"}
+                <Search className="w-4 h-4" />
+                <span>Consultar</span>
               </button>
             </form>
 
-            {pedidoEncontrado === "nao_encontrado" && (
-              <p className="text-sm text-[#9E473B]">
-                Pedido não encontrado com esse código.
-              </p>
-            )}
-
-            {pedidoEncontrado && pedidoEncontrado !== "nao_encontrado" && (
-              <div className="border border-[#EADFD3] rounded-xl p-4 bg-[#FAF6F0] space-y-2 text-sm">
-                <p>
-                  <strong>Código:</strong> {pedidoEncontrado.codigo}
-                </p>
-                <p>
-                  <strong>Status:</strong> {pedidoEncontrado.status}
-                </p>
-                <p>
-                  <strong>Total:</strong> {formatBRL(pedidoEncontrado.total)}
-                </p>
-                <p>
-                  <strong>Rastreio:</strong>{" "}
-                  {pedidoEncontrado.codigo_rastreio ||
-                    "Ainda não informado"}
-                </p>
+            {trackingSearched && !foundOrder && (
+              <div className="p-4 rounded-2xl bg-[#FDF4F2] border border-[#F0CFC8] text-sm text-[#8F4A42]">
+                Nenhum pedido encontrado para &ldquo;{trackingQuery}&rdquo;.
               </div>
             )}
-          </div>
-        )}
 
-        {abaAtiva === "painel" && !adminAutenticado && (
-          <div className="max-w-sm mx-auto bg-white border border-[#EADFD3] rounded-2xl p-6 space-y-4">
-            <h2 className="text-lg font-serif font-semibold text-[#4A2E2B]">
-              Acesso — Painel Ateliê
-            </h2>
-            <form onSubmit={handleEntrarAdmin} className="space-y-3">
-              <div>
-                <label className="block text-xs text-[#6E5650] mb-1">
-                  PIN de acesso
-                </label>
-                <input
-                  type="password"
-                  value={pinInput}
-                  onChange={(e) => setPinInput(e.target.value)}
-                  className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm"
-                />
-              </div>
-              {erroPin && (
-                <p className="text-xs text-[#9E473B]">{erroPin}</p>
-              )}
-              <button
-                type="submit"
-                className="w-full py-2 rounded-lg bg-[#4A2E2B] text-white text-sm font-medium"
-              >
-                Entrar
-              </button>
-            </form>
-          </div>
-        )}
-
-        {abaAtiva === "painel" && adminAutenticado && (
-          <div className="space-y-6">
-            <div className="bg-white border border-[#EADFD3] rounded-2xl p-5 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-serif font-semibold text-[#4A2E2B]">
-                    Painel Administrativo — Santo Papel Colorido
-                  </h2>
-                  <p className="text-xs text-[#7A625B]">
-                    Gerencie pedidos, categorias personalizadas, variações e
-                    fotos dos produtos.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={carregarTudo}
-                    className="px-3 py-1.5 rounded-lg text-xs border border-[#DFCFC0] bg-[#FAF6F0]"
-                  >
-                    {carregando ? "Atualizando..." : "Atualizar"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPainelAba("pedidos")}
-                    className={`px-3 py-1.5 rounded-lg text-xs border ${
-                      painelAba === "pedidos"
-                        ? "bg-[#C98A7E] text-white border-[#C98A7E]"
-                        : "bg-white border-[#DFCFC0]"
-                    }`}
-                  >
-                    Pedidos
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPainelAba("produtos")}
-                    className={`px-3 py-1.5 rounded-lg text-xs border ${
-                      painelAba === "produtos"
-                        ? "bg-[#C98A7E] text-white border-[#C98A7E]"
-                        : "bg-white border-[#DFCFC0]"
-                    }`}
-                  >
-                    Produtos
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPainelAba("categorias")}
-                    className={`px-3 py-1.5 rounded-lg text-xs border ${
-                      painelAba === "categorias"
-                        ? "bg-[#C98A7E] text-white border-[#C98A7E]"
-                        : "bg-white border-[#DFCFC0]"
-                    }`}
-                  >
-                    Categorias
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPainelAba("config")}
-                    className={`px-3 py-1.5 rounded-lg text-xs border ${
-                      painelAba === "config"
-                        ? "bg-[#C98A7E] text-white border-[#C98A7E]"
-                        : "bg-white border-[#DFCFC0]"
-                    }`}
-                  >
-                    Configurações
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAdminAutenticado(false)}
-                    className="px-3 py-1.5 rounded-lg text-xs border border-[#DFCFC0] text-[#7A625B]"
-                  >
-                    Sair
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-                <div className="border border-[#EFE4D8] rounded-xl p-3 bg-[#FFFDF9]">
-                  <p className="text-xs text-[#8C6D62]">
-                    Faturamento Confirmado
-                  </p>
-                  <p className="text-lg font-semibold mt-1">
-                    {formatBRL(metricas.faturamento)}
-                  </p>
-                </div>
-                <div className="border border-[#EFE4D8] rounded-xl p-3 bg-[#FFFDF9]">
-                  <p className="text-xs text-[#8C6D62]">Vendas Aprovadas</p>
-                  <p className="text-lg font-semibold mt-1">
-                    {metricas.vendasAprovadas}
-                  </p>
-                </div>
-                <div className="border border-[#EFE4D8] rounded-xl p-3 bg-[#FFFDF9]">
-                  <p className="text-xs text-[#8C6D62]">Ticket Médio</p>
-                  <p className="text-lg font-semibold mt-1">
-                    {formatBRL(metricas.ticketMedio)}
-                  </p>
-                </div>
-                <div className="border border-[#EFE4D8] rounded-xl p-3 bg-[#FFFDF9]">
-                  <p className="text-xs text-[#8C6D62]">Em Produção</p>
-                  <p className="text-lg font-semibold mt-1">
-                    {metricas.emProducao}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {painelAba === "categorias" && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                <form
-                  onSubmit={handleCriarCategoria}
-                  className="bg-white border border-[#EADFD3] rounded-2xl p-5 space-y-3"
-                >
-                  <h3 className="font-semibold text-[#4A2E2B]">
-                    Nova Categoria
-                  </h3>
-                  <p className="text-xs text-[#7A625B]">
-                    Crie grupos como Cadernos, Blocos, Adesivos, Planners ou
-                    Caixas.
-                  </p>
+            {foundOrder && (
+              <div className="border border-[#E6D8CC] rounded-2xl p-5 bg-[#FAF6F2]/60 space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E6D8CC] pb-3">
                   <div>
-                    <label className="block text-xs text-[#6E5650] mb-1">
-                      Nome da categoria
-                    </label>
-                    <input
-                      type="text"
-                      value={novaCategoriaNome}
-                      onChange={(e) => setNovaCategoriaNome(e.target.value)}
-                      placeholder="Ex.: Tags"
-                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm"
-                    />
+                    <span className="text-xs text-[#8B7669]">Código do pedido</span>
+                    <h2 className="text-lg font-bold text-[#4A3B32]">
+                      {foundOrder.id} — {foundOrder.clienteNome}
+                    </h2>
                   </div>
-                  <button
-                    type="submit"
-                    disabled={criandoCategoria}
-                    className="w-full py-2.5 rounded-lg bg-[#C98A7E] text-white text-sm font-medium hover:bg-[#B8776A]"
-                  >
-                    {criandoCategoria ? "Criando..." : "Criar Categoria"}
-                  </button>
-                </form>
-
-                <div className="bg-white border border-[#EADFD3] rounded-2xl p-5 space-y-3">
-                  <h3 className="font-semibold text-[#4A2E2B]">
-                    Categorias Cadastradas
-                  </h3>
-                  {categorias.length === 0 ? (
-                    <p className="text-xs text-[#7A625B]">
-                      Nenhuma categoria encontrada.
-                    </p>
-                  ) : (
-                    <ul className="space-y-2">
-                      {categorias.map((cat) => (
-                        <li
-                          key={cat.id}
-                          className="flex items-center justify-between border border-[#EFE4D8] rounded-lg px-3 py-2 text-sm bg-[#FAF6F0]"
-                        >
-                          <span>{cat.nome}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleExcluirCategoria(cat.id)}
-                            className="text-xs text-[#9E473B] hover:underline"
-                          >
-                            Excluir
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#6A8E96]/15 text-[#4E6E75]">
+                    {foundOrder.status}
+                  </span>
                 </div>
-              </div>
-            )}
 
-            {painelAba === "produtos" && (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                <form
-                  onSubmit={handleSalvarProduto}
-                  className="lg:col-span-5 bg-white border border-[#EADFD3] rounded-2xl p-5 space-y-3"
-                >
-                  <h3 className="font-semibold text-[#4A2E2B]">
-                    Cadastrar Novo Produto
-                  </h3>
-
-                  <div>
-                    <label className="block text-xs text-[#6E5650] mb-1">
-                      Nome do item
-                    </label>
-                    <input
-                      type="text"
-                      value={formProduto.nome}
-                      onChange={(e) =>
-                        setFormProduto((p) => ({
-                          ...p,
-                          nome: e.target.value,
-                        }))
-                      }
-                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm"
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-[#6E5650] mb-1">
-                        Preço (R$)
-                      </label>
-                      <input
-                        type="text"
-                        value={formProduto.preco}
-                        onChange={(e) =>
-                          setFormProduto((p) => ({
-                            ...p,
-                            preco: e.target.value,
-                          }))
-                        }
-                        placeholder="8,00"
-                        className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs text-[#6E5650] mb-1">
-                        Categoria
-                      </label>
-                      <select
-                        value={formProduto.categoria_id}
-                        onChange={(e) =>
-                          setFormProduto((p) => ({
-                            ...p,
-                            categoria_id: e.target.value,
-                          }))
-                        }
-                        className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm bg-white"
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {STATUS_STEPS.map((step, idx) => {
+                    const currentIdx = STATUS_STEPS.indexOf(foundOrder.status);
+                    const done = idx <= currentIdx;
+                    return (
+                      <div
+                        key={step}
+                        className={`p-3 rounded-xl border text-xs ${
+                          done
+                            ? 'bg-white border-[#6A8E96] text-[#4A3B32] font-semibold'
+                            : 'bg-[#F3EAE2]/60 border-[#E5D7CA] text-[#9A877B]'
+                        }`}
                       >
-                        <option value="">Sem categoria</option>
-                        {categorias.map((cat) => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.nome}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs text-[#6E5650] mb-1">
-                      Prazo de produção
-                    </label>
-                    <input
-                      type="text"
-                      value={formProduto.prazo_producao}
-                      onChange={(e) =>
-                        setFormProduto((p) => ({
-                          ...p,
-                          prazo_producao: e.target.value,
-                        }))
-                      }
-                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm"
-                    />
-                  </div>
-
-                  <div className="border border-[#EFE4D8] rounded-xl p-3.5 bg-[#FAF6F0] space-y-3">
-                    <label className="flex items-center gap-2 text-xs font-semibold text-[#4A2E2B] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formProduto.tem_variacoes}
-                        onChange={(e) =>
-                          setFormProduto((p) => ({
-                            ...p,
-                            tem_variacoes: e.target.checked,
-                          }))
-                        }
-                      />
-                      Variações opcionais (dropdown na vitrine)
-                    </label>
-
-                    {formProduto.tem_variacoes && (
-                      <div className="space-y-3 pt-1">
-                        <div>
-                          <label className="block text-xs text-[#6E5650] mb-1">
-                            Título do bloco na vitrine
-                          </label>
-                          <input
-                            type="text"
-                            value={formProduto.titulo_variacoes}
-                            onChange={(e) =>
-                              setFormProduto((p) => ({
-                                ...p,
-                                titulo_variacoes: e.target.value,
-                              }))
-                            }
-                            placeholder={DEFAULT_TITULO_BLOCO}
-                            className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <CheckCircle2
+                            className={`w-4 h-4 ${done ? 'text-[#6A8E96]' : 'text-[#C5B5A9]'}`}
                           />
+                          <span>Etapa {idx + 1}</span>
                         </div>
-
-                        <div className="border-t border-[#E6D9CC] pt-2.5 space-y-1.5">
-                          <label className="block text-xs font-medium text-[#4A2E2B]">
-                            Variação 1 — Título e opções (separadas por
-                            vírgula)
-                          </label>
-                          <input
-                            type="text"
-                            value={formProduto.titulo_var_1}
-                            onChange={(e) =>
-                              setFormProduto((p) => ({
-                                ...p,
-                                titulo_var_1: e.target.value,
-                              }))
-                            }
-                            placeholder="Ex.: Quantidade referente ou Fragrância"
-                            className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-white"
-                          />
-                          <input
-                            type="text"
-                            value={formProduto.opcoes_var_1}
-                            onChange={(e) =>
-                              setFormProduto((p) => ({
-                                ...p,
-                                opcoes_var_1: e.target.value,
-                              }))
-                            }
-                            placeholder="Opção A, Opção B"
-                            className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-white"
-                          />
-                        </div>
-
-                        <div className="border-t border-[#E6D9CC] pt-2.5 space-y-1.5">
-                          <label className="block text-xs font-medium text-[#4A2E2B]">
-                            Variação 2 — Título e opções (separadas por
-                            vírgula)
-                          </label>
-                          <input
-                            type="text"
-                            value={formProduto.titulo_var_2}
-                            onChange={(e) =>
-                              setFormProduto((p) => ({
-                                ...p,
-                                titulo_var_2: e.target.value,
-                              }))
-                            }
-                            placeholder="Ex.: Cor ou Fita / Tag"
-                            className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-white"
-                          />
-                          <input
-                            type="text"
-                            value={formProduto.opcoes_var_2}
-                            onChange={(e) =>
-                              setFormProduto((p) => ({
-                                ...p,
-                                opcoes_var_2: e.target.value,
-                              }))
-                            }
-                            placeholder="Opção A, Opção B"
-                            className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-white"
-                          />
-                        </div>
-
-                        <div className="border-t border-[#E6D9CC] pt-2.5 space-y-1.5">
-                          <label className="block text-xs font-medium text-[#4A2E2B]">
-                            Variação 3 — Título e opções (separadas por
-                            vírgula)
-                          </label>
-                          <input
-                            type="text"
-                            value={formProduto.titulo_var_3}
-                            onChange={(e) =>
-                              setFormProduto((p) => ({
-                                ...p,
-                                titulo_var_3: e.target.value,
-                              }))
-                            }
-                            placeholder="Ex.: Tamanho ou Modelo"
-                            className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-white"
-                          />
-                          <input
-                            type="text"
-                            value={formProduto.opcoes_var_3}
-                            onChange={(e) =>
-                              setFormProduto((p) => ({
-                                ...p,
-                                opcoes_var_3: e.target.value,
-                              }))
-                            }
-                            placeholder="Opção A, Opção B"
-                            className="w-full border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 text-xs bg-white"
-                          />
-                        </div>
+                        <p className="leading-snug">{step}</p>
                       </div>
-                    )}
-                  </div>
+                    );
+                  })}
+                </div>
 
-                  <div className="space-y-1.5">
-                    <label className="block text-xs text-[#6E5650]">
-                      Foto do produto
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleUploadFoto}
-                      className="block w-full text-xs text-[#6E5650]"
-                    />
-                    {enviandoFoto && (
-                      <p className="text-xs text-[#8C6D62]">
-                        Enviando imagem...
-                      </p>
-                    )}
-                    {formProduto.foto_url && (
-                      <img
-                        src={formProduto.foto_url}
-                        alt="Prévia"
-                        className="w-20 h-20 object-cover rounded-lg border border-[#DFCFC0]"
-                      />
-                    )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-white p-4 rounded-xl border border-[#E8DBD0]">
+                  <div className="space-y-1">
+                    <p className="text-[#8B7669] flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-[#D48C84]" /> Endereço de entrega
+                    </p>
+                    <p className="font-medium text-[#4A3B32]">{foundOrder.clienteEndereco}</p>
                   </div>
+                  <div className="space-y-1">
+                    <p className="text-[#8B7669] flex items-center gap-1">
+                      <Truck className="w-3.5 h-3.5 text-[#6A8E96]" /> Código de rastreio
+                    </p>
+                    <p className="font-semibold text-[#4A3B32]">
+                      {foundOrder.codigoRastreio
+                        ? foundOrder.codigoRastreio
+                        : 'Aguardando postagem / atualização no painel'}
+                    </p>
+                  </div>
+                </div>
 
-                  <div>
-                    <label className="block text-xs text-[#6E5650] mb-1">
-                      Descrição
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={formProduto.descricao}
-                      onChange={(e) =>
-                        setFormProduto((p) => ({
-                          ...p,
-                          descricao: e.target.value,
-                        }))
-                      }
-                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm"
-                    />
-                  </div>
+                <div className="flex items-center justify-between text-sm pt-1">
+                  <span className="text-[#6B584C]">Total do pedido (incl. frete):</span>
+                  <strong className="text-base text-[#4A3B32]">{formatBRL(foundOrder.total)}</strong>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      )}
+
+      {activeTab === 'admin' && (
+        <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8">
+          {!isAdminAuthenticated ? (
+            <div className="max-w-md mx-auto bg-white rounded-3xl border border-[#E6D8CC] p-7 shadow-sm space-y-5">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-[#4A3B32] text-[#C99649] flex items-center justify-center">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h1
+                    className="text-2xl font-semibold text-[#4A3B32]"
+                    style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+                  >
+                    Acesso do Ateliê
+                  </h1>
+                  <p className="text-xs text-[#6B584C]">Gestão de vendas, categorias, catálogo e rastreio</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleAdminLogin} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[#4A3B32] mb-1">
+                    Senha de acesso
+                  </label>
+                  <input
+                    type="password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    placeholder="Digite santo2026"
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm focus:outline-none focus:border-[#D48C84]"
+                  />
+                  {adminError && <p className="text-xs text-red-600 mt-1">{adminError}</p>}
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-[#4A3B32] hover:bg-[#352922] text-[#FAF6F2] py-2.5 rounded-xl text-sm font-semibold transition"
+                >
+                  Entrar no Painel
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#E6D8CC]">
+                <div>
+                  <h1
+                    className="text-2xl sm:text-3xl font-semibold text-[#4A3B32]"
+                    style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+                  >
+                    Painel Administrativo — {config.nomeLoja}
+                  </h1>
+                  <p className="text-xs text-[#6B584C]">
+                    Gerencie pedidos, categorias personalizadas, variações e fotos dos produtos.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={loadAllFromSupabase}
+                    className="px-3 py-2 rounded-xl text-xs font-semibold bg-[#FAF6F2] text-[#4A3B32] border border-[#E5D7CA] flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Atualizar</span>
+                  </button>
+
+                  {[
+                    { id: 'resumo', label: 'Pedidos', icon: TrendingUp },
+                    { id: 'produtos', label: 'Produtos', icon: Tag },
+                    { id: 'categorias', label: 'Categorias', icon: FolderPlus },
+                    { id: 'config', label: 'Configurações', icon: Settings }
+                  ].map((tab) => {
+                    const Icon = tab.icon;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setAdminSection(tab.id)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+                          adminSection === tab.id
+                            ? 'bg-[#D48C84] text-white'
+                            : 'bg-[#FAF6F2] text-[#4A3B32] border border-[#E5D7CA]'
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
 
                   <button
-                    type="submit"
-                    disabled={salvandoProduto || enviandoFoto}
-                    className="w-full py-2.5 rounded-lg bg-[#C98A7E] text-white text-sm font-medium hover:bg-[#B8776A]"
+                    type="button"
+                    onClick={() => setIsAdminAuthenticated(false)}
+                    className="px-3 py-2 rounded-xl text-xs font-semibold text-[#6B584C] hover:bg-[#F3EAE2] flex items-center gap-1"
                   >
-                    {salvandoProduto ? "Salvando..." : "Adicionar à Vitrine"}
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sair</span>
                   </button>
-                </form>
+                </div>
+              </div>
 
-                <div className="lg:col-span-7 bg-white border border-[#EADFD3] rounded-2xl p-5 space-y-3">
-                  <h3 className="font-semibold text-[#4A2E2B]">
-                    Catálogo Cadastrado ({produtos.length})
-                  </h3>
-                  {produtos.length === 0 ? (
-                    <p className="text-xs text-[#7A625B]">
-                      Nenhum produto cadastrado ainda.
-                    </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-[#E6D8CC]">
+                  <div className="flex items-center justify-between text-xs text-[#6B584C] mb-1">
+                    <span>Faturamento Confirmado</span>
+                    <DollarSign className="w-4 h-4 text-[#C99649]" />
+                  </div>
+                  <p className="text-2xl font-bold text-[#4A3B32]">{formatBRL(metrics.faturamento)}</p>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-[#E6D8CC]">
+                  <div className="flex items-center justify-between text-xs text-[#6B584C] mb-1">
+                    <span>Vendas Aprovadas</span>
+                    <ShoppingCart className="w-4 h-4 text-[#D48C84]" />
+                  </div>
+                  <p className="text-2xl font-bold text-[#4A3B32]">{metrics.vendasCount}</p>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-[#E6D8CC]">
+                  <div className="flex items-center justify-between text-xs text-[#6B584C] mb-1">
+                    <span>Ticket Médio</span>
+                    <TrendingUp className="w-4 h-4 text-[#6A8E96]" />
+                  </div>
+                  <p className="text-2xl font-bold text-[#4A3B32]">{formatBRL(metrics.ticketMedio)}</p>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-[#E6D8CC]">
+                  <div className="flex items-center justify-between text-xs text-[#6B584C] mb-1">
+                    <span>Em Produção</span>
+                    <Package className="w-4 h-4 text-[#6A8E96]" />
+                  </div>
+                  <p className="text-2xl font-bold text-[#4A3B32]">{metrics.emProducao}</p>
+                </div>
+              </div>
+
+              {/* ABA PEDIDOS */}
+              {adminSection === 'resumo' && (
+                <div className="bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-4">
+                  <h2 className="text-lg font-bold text-[#4A3B32]">Pedidos e Rastreio</h2>
+
+                  {orders.length === 0 ? (
+                    <p className="text-sm text-[#6B584C]">Nenhum pedido registrado ainda.</p>
                   ) : (
                     <div className="space-y-3">
-                      {produtos.map((prod) => (
+                      {orders.map((order) => (
                         <div
-                          key={prod.id}
-                          className="flex items-center justify-between gap-3 border border-[#EFE4D8] rounded-xl p-3 bg-[#FAF6F0]"
+                          key={order.id}
+                          className="p-4 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0] flex flex-col lg:flex-row lg:items-center justify-between gap-4"
                         >
-                          <div className="flex items-center gap-3">
-                            {prod.foto_url ? (
-                              <img
-                                src={prod.foto_url}
-                                alt={prod.nome}
-                                className="w-14 h-14 rounded-lg object-cover bg-white"
-                              />
-                            ) : (
-                              <div className="w-14 h-14 rounded-lg bg-[#EFE4D8] flex items-center justify-center text-[10px] text-[#7A625B]">
-                                Sem foto
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-sm font-semibold">
-                                {prod.nome}
-                              </p>
-                              <p className="text-xs text-[#7A625B]">
-                                {formatBRL(prod.preco)} •{" "}
-                                {prod.prazo_producao}
-                              </p>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-sm text-[#4A3B32]">{order.id}</span>
+                              <span className="text-xs text-[#8B7669]">• {order.criadoEm}</span>
+                              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white border border-[#DFCFC1]">
+                                {order.status}
+                              </span>
                             </div>
+                            <p className="text-sm font-medium text-[#4A3B32]">
+                              {order.clienteNome} — {order.clienteWhatsapp}
+                            </p>
+                            <p className="text-xs text-[#6B584C]">
+                              {order.itens.map((i) => `${i.quantidade}x ${i.nome}`).join(', ')}{' '}
+                              <strong>• Total: {formatBRL(order.total)}</strong>
+                            </p>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleExcluirProduto(prod.id)}
-                            className="text-xs text-[#9E473B] hover:underline"
-                          >
-                            Excluir
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {painelAba === "pedidos" && (
-              <div className="bg-white border border-[#EADFD3] rounded-2xl p-5 space-y-4">
-                <h3 className="font-semibold text-[#4A2E2B]">
-                  Pedidos Recebidos ({pedidos.length})
-                </h3>
-                {pedidos.length === 0 ? (
-                  <p className="text-xs text-[#7A625B]">
-                    Nenhum pedido registrado até o momento.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {pedidos.map((ped) => {
-                      const itensDoPedido = itensPedido.filter(
-                        (i) => i.pedido_id === ped.id
-                      );
-                      return (
-                        <div
-                          key={ped.id}
-                          className="border border-[#EFE4D8] rounded-xl p-4 bg-[#FAF6F0] space-y-2 text-xs"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div>
-                              <strong className="text-sm">
-                                {ped.codigo}
-                              </strong>{" "}
-                              — {ped.cliente_nome} ({ped.cliente_whatsapp})
-                            </div>
-                            <span className="font-semibold text-sm">
-                              Total: {formatBRL(ped.total)}
-                            </span>
-                          </div>
-
-                          {itensDoPedido.length > 0 && (
-                            <ul className="list-disc pl-5 text-[#5E4A46] space-y-0.5">
-                              {itensDoPedido.map((it) => (
-                                <li key={it.id}>
-                                  {it.quantidade}x {it.nome_produto}
-                                  {it.variacoes_texto
-                                    ? ` (${it.variacoes_texto})`
-                                    : ""}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-
-                          <div className="flex flex-wrap items-center gap-3 pt-2">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                             <select
-                              value={ped.status}
-                              onChange={(e) =>
-                                handleAtualizarStatusPedido(
-                                  ped.id,
-                                  e.target.value
-                                )
-                              }
-                              className="border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 bg-white"
+                              value={order.status}
+                              onChange={(e) => handleOrderStatusChange(order.id, e.target.value)}
+                              className="px-3 py-2 rounded-xl border border-[#DFCFC1] bg-white text-xs font-medium text-[#4A3B32]"
                             >
-                              {STATUS_PEDIDO.map((st) => (
+                              {STATUS_STEPS.map((st) => (
                                 <option key={st} value={st}>
                                   {st}
                                 </option>
@@ -1527,240 +1424,733 @@ export default function App() {
 
                             <input
                               type="text"
-                              defaultValue={ped.codigo_rastreio || ""}
+                              value={order.codigoRastreio || ''}
+                              onChange={(e) => handleTrackingCodeChange(order.id, e.target.value)}
                               placeholder="Código de rastreio"
-                              onBlur={(e) =>
-                                handleSalvarRastreio(ped.id, e.target.value)
-                              }
-                              className="border border-[#DFCFC0] rounded-lg px-2.5 py-1.5 bg-white w-44"
+                              className="px-3 py-2 rounded-xl border border-[#DFCFC1] bg-white text-xs text-[#4A3B32] w-full sm:w-44"
                             />
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ABA CATEGORIAS */}
+              {adminSection === 'categorias' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <form
+                    onSubmit={handleAddCategory}
+                    className="bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-3 h-fit"
+                  >
+                    <h2 className="text-lg font-bold text-[#4A3B32]">Nova Categoria</h2>
+                    <p className="text-xs text-[#6B584C]">
+                      Crie grupos como Cadernos, Blocos, Adesivos, Planners ou Caixas.
+                    </p>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Nome da categoria</label>
+                      <input
+                        type="text"
+                        required
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        placeholder="Ex.: Cadernos Personalizados"
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={savingAction}
+                      className="w-full bg-[#D48C84] hover:bg-[#c37971] text-white py-2.5 rounded-xl text-xs font-semibold transition"
+                    >
+                      {savingAction ? 'Salvando...' : 'Criar Categoria'}
+                    </button>
+                  </form>
+
+                  <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-3">
+                    <h2 className="text-lg font-bold text-[#4A3B32]">Categorias Cadastradas</h2>
+                    {categoriesList.length === 0 ? (
+                      <p className="text-xs text-[#6B584C]">
+                        Nenhuma categoria encontrada. Crie uma ao lado ou rode o SQL da tabela{' '}
+                        <code>categorias</code> no Supabase.
+                      </p>
+                    ) : (
+                      categoriesList.map((cat) => (
+                        <div
+                          key={cat.id}
+                          className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0]"
+                        >
+                          {editingCategory?.id === cat.id ? (
+                            <form onSubmit={handleRenameCategory} className="flex-1 flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editingCategory.nome}
+                                onChange={(e) =>
+                                  setEditingCategory({ ...editingCategory, nome: e.target.value })
+                                }
+                                className="flex-1 px-3 py-1.5 rounded-lg border border-[#DFCFC1] bg-white text-sm"
+                              />
+                              <button
+                                type="submit"
+                                className="px-3 py-1.5 rounded-lg bg-[#6A8E96] text-white text-xs font-semibold"
+                              >
+                                Salvar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingCategory(null)}
+                                className="px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] text-xs"
+                              >
+                                Cancelar
+                              </button>
+                            </form>
+                          ) : (
+                            <>
+                              <span className="font-semibold text-sm text-[#4A3B32]">{cat.nome}</span>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEditingCategory({
+                                      id: cat.id,
+                                      nome: cat.nome,
+                                      nomeOriginal: cat.nome
+                                    })
+                                  }
+                                  className="p-2 rounded-lg bg-white border border-[#DFCFC1] hover:bg-[#F3EAE2]"
+                                  title="Renomear categoria"
+                                >
+                                  <Edit3 className="w-4 h-4 text-[#4A3B32]" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteCategory(cat)}
+                                  className="p-2 rounded-lg bg-white border border-[#DFCFC1] hover:bg-red-50 text-red-600"
+                                  title="Excluir categoria"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ABA PRODUTOS COM CATEGORIAS SINCRONIZADAS, UPLOAD E VARIAÇÕES DROPDOWN */}
+              {adminSection === 'produtos' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <form
+                    onSubmit={handleSaveProduct}
+                    className="bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-3.5 h-fit"
+                  >
+                    <h2 className="text-lg font-bold text-[#4A3B32]">
+                      {editingProductId ? 'Editar Produto' : 'Cadastrar Novo Produto'}
+                    </h2>
+
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Nome do item</label>
+                      <input
+                        type="text"
+                        value={newProduct.nome}
+                        onChange={(e) => setNewProduct({ ...newProduct, nome: e.target.value })}
+                        placeholder="Ex.: Topo de Bolo Bailarina"
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-xs font-semibold mb-1">Preço (R$)</label>
+                        <input
+                          type="text"
+                          value={newProduct.preco}
+                          onChange={(e) => setNewProduct({ ...newProduct, preco: e.target.value })}
+                          placeholder="45.00"
+                          className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold mb-1">Categoria</label>
+                        <select
+                          value={newProduct.categoria || categoryNames[0] || ''}
+                          onChange={(e) => setNewProduct({ ...newProduct, categoria: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                        >
+                          {categoryNames.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Prazo de produção</label>
+                      <input
+                        type="text"
+                        value={newProduct.prazo}
+                        onChange={(e) => setNewProduct({ ...newProduct, prazo: e.target.value })}
+                        placeholder="5 dias úteis"
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+
+                    {/* Variações opcionais com dropdown */}
+                    <div className="p-3.5 rounded-2xl bg-[#FAF6F2] border border-[#E5D7CA] space-y-3">
+                      <label className="flex items-center justify-between gap-2 cursor-pointer">
+                        <span className="text-xs font-bold text-[#4A3B32] flex items-center gap-1.5">
+                          <SlidersHorizontal className="w-3.5 h-3.5 text-[#6A8E96]" />
+                          Variações opcionais (dropdown na vitrine)
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={newProduct.variacoesAtivas}
+                          onChange={(e) =>
+                            setNewProduct({ ...newProduct, variacoesAtivas: e.target.checked })
+                          }
+                          className="w-4 h-4 accent-[#D48C84]"
+                        />
+                      </label>
+
+                      {newProduct.variacoesAtivas && (
+                        <div className="space-y-2.5 pt-1 border-t border-[#E8DBD0]">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
+                              Opções de quantidade referente (separadas por vírgula)
+                            </label>
+                            <input
+                              type="text"
+                              value={newProduct.qtyOptionsText}
+                              onChange={(e) =>
+                                setNewProduct({ ...newProduct, qtyOptionsText: e.target.value })
+                              }
+                              placeholder="10 unidades, 20 unidades, 30 unidades"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-white text-xs"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
+                              Opções de cor (separadas por vírgula)
+                            </label>
+                            <input
+                              type="text"
+                              value={newProduct.colorOptionsText}
+                              onChange={(e) =>
+                                setNewProduct({ ...newProduct, colorOptionsText: e.target.value })
+                              }
+                              placeholder="Azul / Creme, Terracota / Dourado"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-white text-xs"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
+                              Opções de tamanho (separadas por vírgula)
+                            </label>
+                            <input
+                              type="text"
+                              value={newProduct.sizeOptionsText}
+                              onChange={(e) =>
+                                setNewProduct({ ...newProduct, sizeOptionsText: e.target.value })
+                              }
+                              placeholder="Pequeno, Médio, Grande"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-white text-xs"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Upload direto de foto */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold">Foto do produto</label>
+                      <label className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl border-2 border-dashed border-[#D48C84] bg-[#FAF6F2] hover:bg-[#F4EAE3] cursor-pointer text-xs font-semibold text-[#4A3B32] transition">
+                        <Upload className="w-4 h-4 text-[#D48C84]" />
+                        <span>
+                          {uploadingImage ? 'Enviando foto...' : 'Escolher foto do aparelho'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={uploadingImage}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {newProduct.imagem && (
+                        <div className="flex items-center gap-3 p-2 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0]">
+                          <img
+                            src={newProduct.imagem}
+                            alt="Prévia"
+                            className="w-12 h-12 rounded-lg object-cover shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-semibold text-[#6A8E96] flex items-center gap-1">
+                              <ImageIcon className="w-3 h-3" /> Foto pronta
+                            </p>
+                            <p className="text-[10px] text-[#8B7669] truncate">{newProduct.imagem}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Descrição</label>
+                      <textarea
+                        rows={2}
+                        value={newProduct.descricao}
+                        onChange={(e) => setNewProduct({ ...newProduct, descricao: e.target.value })}
+                        placeholder="Detalhes do papel, personalização e medidas..."
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="submit"
+                        disabled={savingAction || uploadingImage}
+                        className="flex-1 bg-[#D48C84] hover:bg-[#c37971] text-white py-2.5 rounded-xl text-xs font-semibold transition disabled:opacity-60"
+                      >
+                        {savingAction
+                          ? 'Salvando...'
+                          : editingProductId
+                            ? 'Salvar Alterações'
+                            : 'Adicionar à Vitrine'}
+                      </button>
+                      {editingProductId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingProductId(null);
+                            setNewProduct(emptyProductForm(categoryNames[0] || ''));
+                          }}
+                          className="px-3 py-2 rounded-xl border border-[#DFCFC1] text-xs font-semibold"
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                    </div>
+                  </form>
+
+                  <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-3">
+                    <h2 className="text-lg font-bold text-[#4A3B32]">Catálogo Cadastrado</h2>
+                    {products.length === 0 ? (
+                      <p className="text-sm text-[#6B584C]">Nenhum produto cadastrado ainda.</p>
+                    ) : (
+                      products.map((prod) => (
+                        <div
+                          key={prod.id}
+                          className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0]"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <img
+                              src={prod.imagem}
+                              alt={prod.nome}
+                              className="w-12 h-12 rounded-lg object-cover shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <p className="font-semibold text-sm text-[#4A3B32] truncate">{prod.nome}</p>
+                              <p className="text-xs text-[#6B584C]">
+                                {formatBRL(prod.preco)} • {prod.categoria} •{' '}
+                                <span className={prod.ativo ? 'text-[#6A8E96] font-semibold' : 'text-red-500'}>
+                                  {prod.ativo ? 'Ativo' : 'Pausado'}
+                                </span>
+                                {prod.variacoesAtivas && (
+                                  <span className="ml-1.5 text-[#C99649] font-semibold">• Com variações</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditProduct(prod)}
+                              className="p-2 rounded-lg bg-white border border-[#DFCFC1] hover:bg-[#F3EAE2]"
+                              title="Editar"
+                            >
+                              <Edit3 className="w-4 h-4 text-[#4A3B32]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleProductActive(prod)}
+                              className="px-2.5 py-1.5 rounded-lg bg-white border border-[#DFCFC1] text-xs font-medium"
+                            >
+                              {prod.ativo ? 'Pausar' : 'Ativar'}
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ABA CONFIGURAÇÕES */}
+              {adminSection === 'config' && (
+                <div className="bg-white rounded-2xl border border-[#E6D8CC] p-6 max-w-2xl space-y-4">
+                  <h2 className="text-lg font-bold text-[#4A3B32]">Configurações da Vitrine e Frete</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Nome da marca</label>
+                      <input
+                        type="text"
+                        value={config.nomeLoja}
+                        onChange={(e) => handleSaveConfig({ nomeLoja: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Frase / Subtítulo</label>
+                      <input
+                        type="text"
+                        value={config.subtitulo}
+                        onChange={(e) => handleSaveConfig({ subtitulo: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Frete base (R$)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={config.freteBase}
+                        onChange={(e) =>
+                          handleSaveConfig({ freteBase: Number(e.target.value) || 0 })
+                        }
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Frete grátis acima de (R$)</label>
+                      <input
+                        type="number"
+                        step="5"
+                        value={config.freteGratisAcima}
+                        onChange={(e) =>
+                          handleSaveConfig({ freteGratisAcima: Number(e.target.value) || 0 })
+                        }
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+      )}
+
+      {isCartOpen && (
+        <div className="fixed inset-0 z-40 flex justify-end bg-black/40">
+          <div className="w-full max-w-md bg-[#FAF6F2] h-full shadow-2xl flex flex-col justify-between border-l border-[#E5D7CA]">
+            <div className="p-5 border-b border-[#E5D7CA] flex items-center justify-between bg-white">
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-[#D48C84]" />
+                <h2 className="font-bold text-base text-[#4A3B32]">Sua Sacola</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCartOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-[#F3EAE2]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {cart.length === 0 ? (
+                <div className="text-center py-12 space-y-2">
+                  <p className="text-sm font-medium text-[#6B584C]">Sua sacola está vazia.</p>
+                  <p className="text-xs text-[#8B7669]">Adicione itens da vitrine para calcular o frete.</p>
+                </div>
+              ) : (
+                <>
+                  {cart.map((item) => (
+                    <div
+                      key={item.cartKey}
+                      className="bg-white p-3 rounded-2xl border border-[#E8DBD0] flex items-center gap-3"
+                    >
+                      <img
+                        src={item.imagem}
+                        alt={item.nome}
+                        className="w-16 h-16 rounded-xl object-cover shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-[#4A3B32] line-clamp-2">{item.nome}</p>
+                        <p className="text-xs text-[#6B584C]">{formatBRL(item.preco)} cada</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateQty(item.cartKey, -1)}
+                            className="w-6 h-6 rounded-md bg-[#F3EAE2] flex items-center justify-center"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="text-xs font-bold px-1">{item.quantidade}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateQty(item.cartKey, 1)}
+                            className="w-6 h-6 rounded-md bg-[#F3EAE2] flex items-center justify-center"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFromCart(item.cartKey)}
+                        className="p-1.5 text-[#9A877B] hover:text-red-500"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+
+                  <form
+                    onSubmit={handleCalcularFrete}
+                    className="bg-white p-4 rounded-2xl border border-[#E8DBD0] space-y-2"
+                  >
+                    <label className="block text-xs font-semibold text-[#4A3B32]">
+                      Calcular frete por CEP
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={cepInput}
+                        onChange={(e) => setCepInput(e.target.value)}
+                        placeholder="00000-000"
+                        className="flex-1 px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-xs"
+                      />
+                      <button
+                        type="submit"
+                        className="px-3.5 py-2 rounded-xl bg-[#6A8E96] text-white text-xs font-semibold"
+                      >
+                        Calcular
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
+
+            {cart.length > 0 && (
+              <div className="p-5 bg-white border-t border-[#E5D7CA] space-y-3">
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between text-[#6B584C]">
+                    <span>Subtotal</span>
+                    <span>{formatBRL(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-[#6B584C]">
+                    <span>Frete</span>
+                    <span>{freteAtual === 0 ? 'Grátis' : formatBRL(freteAtual)}</span>
+                  </div>
+                  <div className="flex justify-between text-base font-bold text-[#4A3B32] pt-2 border-t border-[#F3ECE5]">
+                    <span>Total</span>
+                    <span>{formatBRL(totalCarrinho)}</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleOpenCheckout}
+                  className="w-full bg-[#D48C84] hover:bg-[#c47971] text-white py-3 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2"
+                >
+                  <span>Concluir Pedido</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isCheckoutOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 border border-[#E6D8CC] shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#F3ECE5] pb-3">
+              <h2
+                className="text-2xl font-semibold text-[#4A3B32]"
+                style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+              >
+                {pendingOrder ? `Pedido ${pendingOrder.id}` : 'Finalizar Encomenda'}
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCheckoutOpen(false);
+                  setPendingOrder(null);
+                }}
+                className="p-1.5 rounded-lg hover:bg-[#FAF6F2]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {!pendingOrder ? (
+              <form onSubmit={handleCreatePixOrder} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-semibold mb-1 flex items-center gap-1">
+                    <User className="w-3.5 h-3.5 text-[#D48C84]" /> Seu nome completo
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={checkoutForm.clienteNome}
+                    onChange={(e) => setCheckoutForm({ ...checkoutForm, clienteNome: e.target.value })}
+                    placeholder="Ex.: Mariana Souza"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold mb-1 flex items-center gap-1">
+                      <Phone className="w-3.5 h-3.5 text-[#6A8E96]" /> WhatsApp
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={checkoutForm.clienteWhatsapp}
+                      onChange={(e) =>
+                        setCheckoutForm({ ...checkoutForm, clienteWhatsapp: e.target.value })
+                      }
+                      placeholder="(12) 99999-0000"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1 flex items-center gap-1">
+                      <Mail className="w-3.5 h-3.5 text-[#C99649]" /> E-mail (comprovante Pix)
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={checkoutForm.clienteEmail}
+                      onChange={(e) =>
+                        setCheckoutForm({ ...checkoutForm, clienteEmail: e.target.value })
+                      }
+                      placeholder="voce@email.com"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold mb-1">CEP</label>
+                    <input
+                      type="text"
+                      value={checkoutForm.clienteCep}
+                      onChange={(e) => setCheckoutForm({ ...checkoutForm, clienteCep: e.target.value })}
+                      placeholder="12300-000"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold mb-1">Endereço de entrega</label>
+                    <input
+                      type="text"
+                      value={checkoutForm.clienteEndereco}
+                      onChange={(e) =>
+                        setCheckoutForm({ ...checkoutForm, clienteEndereco: e.target.value })
+                      }
+                      placeholder="Rua, número, bairro, cidade"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-[#FAF6F2] border border-[#E8DBD0] flex items-center justify-between text-sm">
+                  <span className="font-medium text-[#6B584C]">Total a pagar via Pix:</span>
+                  <strong className="text-lg text-[#4A3B32]">{formatBRL(totalCarrinho)}</strong>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={savingAction}
+                  className="w-full bg-[#4A3B32] hover:bg-[#352922] text-[#FAF6F2] py-3 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  <QrCode className="w-4 h-4 text-[#C99649]" />
+                  <span>{savingAction ? 'Gerando Pix...' : 'Gerar QR Code Pix'}</span>
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-4 text-center">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#EAF1F3] text-[#4E6E75]">
+                  <span>Status: {pendingOrder.status}</span>
+                </div>
+
+                {pendingOrder.qrCodeBase64 ? (
+                  <div className="mx-auto w-48 h-48 rounded-2xl border border-[#E6D8CC] bg-white p-2 flex items-center justify-center shadow-sm">
+                    <img
+                      src={`data:image/png;base64,${pendingOrder.qrCodeBase64}`}
+                      alt="QR Code Pix Mercado Pago"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="mx-auto w-40 h-40 rounded-2xl border-2 border-dashed border-[#C99649] bg-[#FAF6F2] flex flex-col items-center justify-center p-3">
+                    <QrCode className="w-20 h-20 text-[#4A3B32]" />
+                  </div>
+                )}
+
+                <p className="text-base font-bold text-[#4A3B32]">
+                  Valor: {formatBRL(pendingOrder.total)}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={handleCopyPix}
+                  className="w-full py-2.5 px-4 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-xs font-semibold flex items-center justify-center gap-2"
+                >
+                  {copiedPix ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span>Código Pix Copia e Cola copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 text-[#6A8E96]" />
+                      <span>Copiar código Pix Copia e Cola</span>
+                    </>
+                  )}
+                </button>
+
+                {pendingOrder.status === 'Aguardando Pagamento' ? (
+                  <p className="text-xs text-[#6B584C]">
+                    Abra o app do seu banco e pague o Pix. Assim que o pagamento for confirmado pelo Mercado Pago, esta tela atualiza automaticamente.
+                  </p>
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900">
+                    <p className="font-semibold">
+                      Pagamento confirmado! Anote o código <strong>{pendingOrder.id}</strong> para acompanhar o envio.
+                    </p>
                   </div>
                 )}
               </div>
             )}
-
-            {painelAba === "config" && (
-              <form
-                onSubmit={handleSalvarConfig}
-                className="max-w-lg bg-white border border-[#EADFD3] rounded-2xl p-5 space-y-3"
-              >
-                <h3 className="font-semibold text-[#4A2E2B]">
-                  Configurações da Loja
-                </h3>
-                <div>
-                  <label className="block text-xs text-[#6E5650] mb-1">
-                    WhatsApp comercial (com DDI e DDD)
-                  </label>
-                  <input
-                    type="text"
-                    value={formConfig.whatsapp}
-                    onChange={(e) =>
-                      setFormConfig((c) => ({
-                        ...c,
-                        whatsapp: e.target.value,
-                      }))
-                    }
-                    placeholder="5512999999999"
-                    className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-[#6E5650] mb-1">
-                      Frete Fixo (R$)
-                    </label>
-                    <input
-                      type="text"
-                      value={formConfig.frete_fixo}
-                      onChange={(e) =>
-                        setFormConfig((c) => ({
-                          ...c,
-                          frete_fixo: e.target.value,
-                        }))
-                      }
-                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-[#6E5650] mb-1">
-                      Frete Grátis Acima de (R$)
-                    </label>
-                    <input
-                      type="text"
-                      value={formConfig.frete_gratis_acima_de}
-                      onChange={(e) =>
-                        setFormConfig((c) => ({
-                          ...c,
-                          frete_gratis_acima_de: e.target.value,
-                        }))
-                      }
-                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-sm"
-                    />
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  disabled={salvandoConfig}
-                  className="px-4 py-2 rounded-lg bg-[#4A2E2B] text-white text-sm font-medium"
-                >
-                  {salvandoConfig ? "Salvando..." : "Salvar Configurações"}
-                </button>
-              </form>
-            )}
-          </div>
-        )}
-      </main>
-
-      {sacolaAberta && (
-        <div className="fixed inset-0 z-40 bg-black/40 flex justify-end">
-          <div className="w-full max-w-md bg-[#FFFDF9] h-full p-5 overflow-y-auto flex flex-col justify-between space-y-5">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-[#EADFD3] pb-3">
-                <h2 className="font-serif text-lg font-semibold text-[#4A2E2B]">
-                  Sua Sacola
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setSacolaAberta(false)}
-                  className="text-xs px-2.5 py-1 rounded border border-[#DFCFC0]"
-                >
-                  Fechar
-                </button>
-              </div>
-
-              {ultimoPedidoCriado && (
-                <div className="border border-emerald-200 bg-emerald-50 rounded-xl p-3 text-xs space-y-1">
-                  <p className="font-semibold text-emerald-900">
-                    Pedido confirmado: {ultimoPedidoCriado.codigo}
-                  </p>
-                  <p className="text-emerald-800">
-                    Total: {formatBRL(ultimoPedidoCriado.total)}
-                  </p>
-                </div>
-              )}
-
-              {sacola.length === 0 ? (
-                <p className="text-sm text-[#7A625B]">
-                  Nenhum item na sacola no momento.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {sacola.map((item) => (
-                    <div
-                      key={item.chaveItem}
-                      className="border border-[#EFE4D8] rounded-xl p-3 bg-white space-y-1.5 text-xs"
-                    >
-                      <div className="flex justify-between font-semibold">
-                        <span>{item.nome}</span>
-                        <span>
-                          {formatBRL(item.preco_unitario * item.quantidade)}
-                        </span>
-                      </div>
-                      {item.resumo_variacoes && (
-                        <p className="text-[#7A625B]">
-                          {item.resumo_variacoes}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleAlterarQtdSacola(item.chaveItem, -1)
-                          }
-                          className="px-2 py-0.5 border border-[#DFCFC0] rounded"
-                        >
-                          -
-                        </button>
-                        <span>{item.quantidade}</span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleAlterarQtdSacola(item.chaveItem, 1)
-                          }
-                          className="px-2 py-0.5 border border-[#DFCFC0] rounded"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  <div className="border-t border-[#EADFD3] pt-3 space-y-1 text-xs">
-                    <div className="flex justify-between">
-                      <span>Subtotal</span>
-                      <span>{formatBRL(subtotalSacola)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Frete</span>
-                      <span>{formatBRL(valorFrete)}</span>
-                    </div>
-                    <div className="flex justify-between font-semibold text-sm pt-1">
-                      <span>Total</span>
-                      <span>{formatBRL(totalPedidoSacola)}</span>
-                    </div>
-                  </div>
-
-                  <form
-                    onSubmit={handleFinalizarPedido}
-                    className="space-y-2.5 pt-2"
-                  >
-                    <input
-                      type="text"
-                      value={clienteNome}
-                      onChange={(e) => setClienteNome(e.target.value)}
-                      placeholder="Seu nome completo"
-                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-xs bg-white"
-                      required
-                    />
-                    <input
-                      type="text"
-                      value={clienteWhatsapp}
-                      onChange={(e) => setClienteWhatsapp(e.target.value)}
-                      placeholder="Seu WhatsApp com DDD"
-                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-xs bg-white"
-                      required
-                    />
-                    <input
-                      type="text"
-                      value={clienteCep}
-                      onChange={(e) => setClienteCep(e.target.value)}
-                      placeholder="CEP"
-                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-xs bg-white"
-                    />
-                    <input
-                      type="text"
-                      value={clienteEndereco}
-                      onChange={(e) => setClienteEndereco(e.target.value)}
-                      placeholder="Endereço de entrega"
-                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-xs bg-white"
-                    />
-                    <input
-                      type="text"
-                      value={clienteObservacao}
-                      onChange={(e) => setClienteObservacao(e.target.value)}
-                      placeholder="Observações (opcional)"
-                      className="w-full border border-[#DFCFC0] rounded-lg px-3 py-2 text-xs bg-white"
-                    />
-                    <button
-                      type="submit"
-                      disabled={finalizandoPedido}
-                      className="w-full py-2.5 rounded-xl bg-[#4A2E2B] text-white text-xs font-medium"
-                    >
-                      {finalizandoPedido
-                        ? "Enviando pedido..."
-                        : "Finalizar Pedido"}
-                    </button>
-                  </form>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       )}
+
+      <footer className="bg-white border-t border-[#E8DBD0] py-6 px-4 text-center text-xs text-[#7C685B]">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>
+            <strong>{config.nomeLoja}</strong> — {config.subtitulo}
+          </span>
+          <span>Vitrine artesanal • Supabase + Mercado Pago</span>
+        </div>
+      </footer>
     </div>
   );
 }
