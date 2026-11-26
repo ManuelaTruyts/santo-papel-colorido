@@ -32,7 +32,8 @@ import {
   Mail,
   Upload,
   FolderPlus,
-  Image as ImageIcon
+  Image as ImageIcon,
+  SlidersHorizontal
 } from 'lucide-react';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -54,6 +55,10 @@ const DEFAULT_FALLBACK_CATEGORIES = [
   'Papelaria Corporativa'
 ];
 
+const DEFAULT_QTY_OPTIONS = ['10 unidades', '20 unidades', '30 unidades', '50 unidades'];
+const DEFAULT_COLOR_OPTIONS = ['Azul / Creme', 'Terracota / Dourado', 'Rosa Pastel / Branco', 'Personalizada'];
+const DEFAULT_SIZE_OPTIONS = ['Pequeno', 'Médio', 'Grande'];
+
 const STATUS_STEPS = ['Aguardando Pagamento', 'Em Produção', 'Enviado', 'Concluído'];
 
 function formatBRL(value) {
@@ -61,6 +66,14 @@ function formatBRL(value) {
     style: 'currency',
     currency: 'BRL'
   });
+}
+
+function parseOptionsText(text, fallback) {
+  const list = String(text || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return list.length > 0 ? Array.from(new Set(list)) : fallback;
 }
 
 function BrandLogo({ size = 'md' }) {
@@ -107,6 +120,19 @@ function BrandLogo({ size = 'md' }) {
   );
 }
 
+const emptyProductForm = (defaultCat = '') => ({
+  nome: '',
+  descricao: '',
+  preco: '',
+  categoria: defaultCat,
+  prazo: '5 dias úteis',
+  imagem: '',
+  variacoesAtivas: false,
+  qtyOptionsText: DEFAULT_QTY_OPTIONS.join(', '),
+  colorOptionsText: DEFAULT_COLOR_OPTIONS.join(', '),
+  sizeOptionsText: DEFAULT_SIZE_OPTIONS.join(', ')
+});
+
 export default function App() {
   const [products, setProducts] = useState([]);
   const [categoriesList, setCategoriesList] = useState([]);
@@ -124,6 +150,9 @@ export default function App() {
   const [cepInput, setCepInput] = useState('');
   const [freteCalculado, setFreteCalculado] = useState(null);
   const [toastMsg, setToastMsg] = useState('');
+
+  // Escolhas do cliente nos dropdowns de cada produto na vitrine
+  const [selectedVariantsByProduct, setSelectedVariantsByProduct] = useState({});
 
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [checkoutForm, setCheckoutForm] = useState({
@@ -150,22 +179,15 @@ export default function App() {
   const [editingCategory, setEditingCategory] = useState(null);
 
   // Gestão de Produtos
-  const [newProduct, setNewProduct] = useState({
-    nome: '',
-    descricao: '',
-    preco: '',
-    categoria: '',
-    prazo: '5 dias úteis',
-    imagem: ''
-  });
+  const [newProduct, setNewProduct] = useState(emptyProductForm(''));
   const [editingProductId, setEditingProductId] = useState(null);
 
-  const showToast = (msg) => {
+  const showToast = useCallback((msg) => {
     setToastMsg(msg);
     setTimeout(() => {
       setToastMsg((prev) => (prev === msg ? '' : prev));
-    }, 3200);
-  };
+    }, 3400);
+  }, []);
 
   const categoryNames = useMemo(() => {
     if (categoriesList.length > 0) {
@@ -174,8 +196,9 @@ export default function App() {
     return DEFAULT_FALLBACK_CATEGORIES;
   }, [categoriesList]);
 
+  // Garante que o dropdown de categoria do formulário sempre reflita as categorias carregadas
   useEffect(() => {
-    if (!newProduct.categoria && categoryNames.length > 0) {
+    if (categoryNames.length > 0 && !categoryNames.includes(newProduct.categoria)) {
       setNewProduct((prev) => ({ ...prev, categoria: categoryNames[0] }));
     }
   }, [categoryNames, newProduct.categoria]);
@@ -201,18 +224,37 @@ export default function App() {
 
       if (prodRes.data) {
         setProducts(
-          prodRes.data.map((p) => ({
-            id: p.id,
-            nome: p.nome,
-            descricao: p.descricao || '',
-            preco: Number(p.preco),
-            categoria: p.categoria,
-            prazo: p.prazo_producao || '5 dias úteis',
-            imagem:
-              p.imagem_url ||
-              'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80',
-            ativo: p.ativo !== false
-          }))
+          prodRes.data.map((p) => {
+            const qtyOpts =
+              Array.isArray(p.opcoes_quantidade) && p.opcoes_quantidade.length > 0
+                ? p.opcoes_quantidade
+                : DEFAULT_QTY_OPTIONS;
+            const colorOpts =
+              Array.isArray(p.opcoes_cor) && p.opcoes_cor.length > 0
+                ? p.opcoes_cor
+                : DEFAULT_COLOR_OPTIONS;
+            const sizeOpts =
+              Array.isArray(p.opcoes_tamanho) && p.opcoes_tamanho.length > 0
+                ? p.opcoes_tamanho
+                : DEFAULT_SIZE_OPTIONS;
+
+            return {
+              id: p.id,
+              nome: p.nome,
+              descricao: p.descricao || '',
+              preco: Number(p.preco),
+              categoria: p.categoria,
+              prazo: p.prazo_producao || '5 dias úteis',
+              imagem:
+                p.imagem_url ||
+                'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80',
+              ativo: p.ativo !== false,
+              variacoesAtivas: Boolean(p.variacoes_ativas),
+              opcoesQuantidade: qtyOpts,
+              opcoesCor: colorOpts,
+              opcoesTamanho: sizeOpts
+            };
+          })
         );
       }
 
@@ -270,7 +312,7 @@ export default function App() {
     } finally {
       setLoadingData(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     loadAllFromSupabase();
@@ -296,7 +338,7 @@ export default function App() {
     }, 5000);
 
     return () => clearInterval(timer);
-  }, [pendingOrder]);
+  }, [pendingOrder, showToast]);
 
   const subtotal = useMemo(
     () => cart.reduce((acc, item) => acc + item.preco * item.quantidade, 0),
@@ -366,7 +408,7 @@ export default function App() {
         showToast('Foto enviada com sucesso!');
       }
     } catch {
-      showToast('Erro ao enviar foto. Verifique se executou o SQL do bucket "produtos".');
+      showToast('Erro ao enviar foto. Verifique se o bucket "produtos" está criado no Storage.');
     } finally {
       setUploadingImage(false);
       e.target.value = '';
@@ -384,10 +426,11 @@ export default function App() {
       const { error } = await supabase.from('categorias').insert({ nome: trimmed });
       if (error) throw error;
       setNewCategoryName('');
-      showToast(`Categoria "${trimmed}" criada!`);
+      setNewProduct((prev) => ({ ...prev, categoria: trimmed }));
+      showToast(`Categoria "${trimmed}" criada e já disponível no cadastro de produto!`);
       await loadAllFromSupabase();
     } catch {
-      showToast('Não foi possível criar (verifique se o nome já existe ou se rodou o SQL).');
+      showToast('Não foi possível criar (verifique se a categoria já existe).');
     } finally {
       setSavingAction(false);
     }
@@ -441,19 +484,48 @@ export default function App() {
     }
   };
 
+  const getVariantChoice = (product) => {
+    const saved = selectedVariantsByProduct[product.id] || {};
+    return {
+      quantidade: saved.quantidade || product.opcoesQuantidade?.[0] || DEFAULT_QTY_OPTIONS[0],
+      cor: saved.cor || product.opcoesCor?.[0] || DEFAULT_COLOR_OPTIONS[0],
+      tamanho: saved.tamanho || product.opcoesTamanho?.[0] || DEFAULT_SIZE_OPTIONS[0]
+    };
+  };
+
+  const handleVariantChange = (productId, field, value) => {
+    setSelectedVariantsByProduct((prev) => ({
+      ...prev,
+      [productId]: {
+        ...(prev[productId] || {}),
+        [field]: value
+      }
+    }));
+  };
+
   const handleAddToCart = (product) => {
+    let labelResumo = '';
+    let cartKey = product.id;
+
+    if (product.variacoesAtivas) {
+      const chosen = getVariantChoice(product);
+      labelResumo = `${chosen.quantidade} • ${chosen.cor} • ${chosen.tamanho}`;
+      cartKey = `${product.id}__${chosen.quantidade}__${chosen.cor}__${chosen.tamanho}`;
+    }
+
     setCart((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
+      const existing = prev.find((item) => item.cartKey === cartKey);
       if (existing) {
         return prev.map((item) =>
-          item.id === product.id ? { ...item, quantidade: item.quantidade + 1 } : item
+          item.cartKey === cartKey ? { ...item, quantidade: item.quantidade + 1 } : item
         );
       }
       return [
         ...prev,
         {
+          cartKey,
           id: product.id,
-          nome: product.nome,
+          nome: labelResumo ? `${product.nome} (${labelResumo})` : product.nome,
           preco: product.preco,
           imagem: product.imagem,
           quantidade: 1
@@ -463,18 +535,20 @@ export default function App() {
     showToast(`"${product.nome}" adicionado à sacola`);
   };
 
-  const handleUpdateQty = (id, delta) => {
+  const handleUpdateQty = (cartKey, delta) => {
     setCart((prev) =>
       prev
         .map((item) =>
-          item.id === id ? { ...item, quantidade: Math.max(0, item.quantidade + delta) } : item
+          item.cartKey === cartKey
+            ? { ...item, quantidade: Math.max(0, item.quantidade + delta) }
+            : item
         )
         .filter((item) => item.quantidade > 0)
     );
   };
 
-  const handleRemoveFromCart = (id) => {
-    setCart((prev) => prev.filter((item) => item.id !== id));
+  const handleRemoveFromCart = (cartKey) => {
+    setCart((prev) => prev.filter((item) => item.cartKey !== cartKey));
   };
 
   const handleCalcularFrete = (e) => {
@@ -676,20 +750,31 @@ export default function App() {
     }
 
     const categoriaEscolhida = newProduct.categoria || categoryNames[0] || 'Geral';
+    const qtyArr = parseOptionsText(newProduct.qtyOptionsText, DEFAULT_QTY_OPTIONS);
+    const colorArr = parseOptionsText(newProduct.colorOptionsText, DEFAULT_COLOR_OPTIONS);
+    const sizeArr = parseOptionsText(newProduct.sizeOptionsText, DEFAULT_SIZE_OPTIONS);
+
+    const payload = {
+      nome: newProduct.nome.trim(),
+      descricao: newProduct.descricao.trim() || 'Peça artesanal personalizada.',
+      preco: precoNum,
+      categoria: categoriaEscolhida,
+      prazo_producao: newProduct.prazo || '5 dias úteis',
+      imagem_url:
+        newProduct.imagem.trim() ||
+        'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80',
+      variacoes_ativas: Boolean(newProduct.variacoesAtivas),
+      opcoes_quantidade: qtyArr,
+      opcoes_cor: colorArr,
+      opcoes_tamanho: sizeArr
+    };
 
     setSavingAction(true);
     try {
       if (editingProductId) {
         const { error } = await supabase
           .from('produtos')
-          .update({
-            nome: newProduct.nome.trim(),
-            descricao: newProduct.descricao.trim() || 'Peça artesanal personalizada.',
-            preco: precoNum,
-            categoria: categoriaEscolhida,
-            prazo_producao: newProduct.prazo || '5 dias úteis',
-            imagem_url: newProduct.imagem.trim()
-          })
+          .update(payload)
           .eq('id', editingProductId);
 
         if (error) throw error;
@@ -697,14 +782,7 @@ export default function App() {
         showToast('Produto atualizado!');
       } else {
         const { error } = await supabase.from('produtos').insert({
-          nome: newProduct.nome.trim(),
-          descricao: newProduct.descricao.trim() || 'Peça artesanal personalizada.',
-          preco: precoNum,
-          categoria: categoriaEscolhida,
-          prazo_producao: newProduct.prazo || '5 dias úteis',
-          imagem_url:
-            newProduct.imagem.trim() ||
-            'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80',
+          ...payload,
           ativo: true
         });
 
@@ -712,17 +790,10 @@ export default function App() {
         showToast('Produto salvo na vitrine!');
       }
 
-      setNewProduct({
-        nome: '',
-        descricao: '',
-        preco: '',
-        categoria: categoryNames[0] || '',
-        prazo: '5 dias úteis',
-        imagem: ''
-      });
+      setNewProduct(emptyProductForm(categoriaEscolhida));
       await loadAllFromSupabase();
-    } catch {
-      showToast('Erro ao salvar produto no Supabase');
+    } catch (err) {
+      showToast(err?.message || 'Erro ao salvar produto. Rode o SQL da Etapa 1 no Supabase.');
     } finally {
       setSavingAction(false);
     }
@@ -736,7 +807,11 @@ export default function App() {
       preco: String(prod.preco),
       categoria: prod.categoria,
       prazo: prod.prazo,
-      imagem: prod.imagem
+      imagem: prod.imagem,
+      variacoesAtivas: Boolean(prod.variacoesAtivas),
+      qtyOptionsText: (prod.opcoesQuantidade || DEFAULT_QTY_OPTIONS).join(', '),
+      colorOptionsText: (prod.opcoesCor || DEFAULT_COLOR_OPTIONS).join(', '),
+      sizeOptionsText: (prod.opcoesTamanho || DEFAULT_SIZE_OPTIONS).join(', ')
     });
   };
 
@@ -933,59 +1008,125 @@ export default function App() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {filteredProducts.map((product) => (
-                  <article
-                    key={product.id}
-                    className="bg-white rounded-2xl border border-[#E8DBD0] overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="relative h-48 bg-[#F4ECE5] overflow-hidden">
-                        <img
-                          src={product.imagem}
-                          alt={product.nome}
-                          className="w-full h-full object-cover hover:scale-105 transition duration-300"
-                        />
-                        <span className="absolute top-3 left-3 bg-[#FAF6F2]/95 text-[#4A3B32] text-[11px] font-semibold px-2.5 py-1 rounded-full border border-[#E5D7CA]">
-                          {product.categoria}
-                        </span>
-                      </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredProducts.map((product) => {
+                  const choice = getVariantChoice(product);
+                  return (
+                    <article
+                      key={product.id}
+                      className="bg-white rounded-2xl border border-[#E8DBD0] overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="relative h-48 bg-[#F4ECE5] overflow-hidden">
+                          <img
+                            src={product.imagem}
+                            alt={product.nome}
+                            className="w-full h-full object-cover hover:scale-105 transition duration-300"
+                          />
+                          <span className="absolute top-3 left-3 bg-[#FAF6F2]/95 text-[#4A3B32] text-[11px] font-semibold px-2.5 py-1 rounded-full border border-[#E5D7CA]">
+                            {product.categoria}
+                          </span>
+                        </div>
 
-                      <div className="p-4 space-y-2">
-                        <h2
-                          className="text-xl font-semibold text-[#4A3B32] leading-snug"
-                          style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-                        >
-                          {product.nome}
-                        </h2>
-                        <p className="text-xs text-[#6B584C] line-clamp-2 leading-relaxed">
-                          {product.descricao}
-                        </p>
-                        <div className="flex items-center gap-1.5 text-[11px] text-[#6A8E96] font-medium pt-1">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>Prazo: {product.prazo}</span>
+                        <div className="p-4 space-y-2.5">
+                          <h2
+                            className="text-xl font-semibold text-[#4A3B32] leading-snug"
+                            style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+                          >
+                            {product.nome}
+                          </h2>
+                          <p className="text-xs text-[#6B584C] line-clamp-2 leading-relaxed">
+                            {product.descricao}
+                          </p>
+                          <div className="flex items-center gap-1.5 text-[11px] text-[#6A8E96] font-medium">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Prazo: {product.prazo}</span>
+                          </div>
+
+                          {product.variacoesAtivas && (
+                            <div className="pt-2 space-y-2 border-t border-[#F3ECE5]">
+                              <div>
+                                <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
+                                  Quantidade referente
+                                </label>
+                                <select
+                                  value={choice.quantidade}
+                                  onChange={(e) =>
+                                    handleVariantChange(product.id, 'quantidade', e.target.value)
+                                  }
+                                  className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-[#FAF6F2] text-xs text-[#4A3B32]"
+                                >
+                                  {(product.opcoesQuantidade || DEFAULT_QTY_OPTIONS).map((opt) => (
+                                    <option key={opt} value={opt}>
+                                      {opt}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
+                                    Cor
+                                  </label>
+                                  <select
+                                    value={choice.cor}
+                                    onChange={(e) =>
+                                      handleVariantChange(product.id, 'cor', e.target.value)
+                                    }
+                                    className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-[#FAF6F2] text-xs text-[#4A3B32]"
+                                  >
+                                    {(product.opcoesCor || DEFAULT_COLOR_OPTIONS).map((opt) => (
+                                      <option key={opt} value={opt}>
+                                        {opt}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
+                                    Tamanho
+                                  </label>
+                                  <select
+                                    value={choice.tamanho}
+                                    onChange={(e) =>
+                                      handleVariantChange(product.id, 'tamanho', e.target.value)
+                                    }
+                                    className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-[#FAF6F2] text-xs text-[#4A3B32]"
+                                  >
+                                    {(product.opcoesTamanho || DEFAULT_SIZE_OPTIONS).map((opt) => (
+                                      <option key={opt} value={opt}>
+                                        {opt}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
 
-                    <div className="px-4 pb-4 pt-2 border-t border-[#F3ECE5] flex items-center justify-between gap-2">
-                      <div>
-                        <span className="block text-[11px] text-[#8B7669]">Valor unitário</span>
-                        <strong className="text-base font-bold text-[#4A3B32]">
-                          {formatBRL(product.preco)}
-                        </strong>
+                      <div className="px-4 pb-4 pt-2 border-t border-[#F3ECE5] flex items-center justify-between gap-2">
+                        <div>
+                          <span className="block text-[11px] text-[#8B7669]">Valor</span>
+                          <strong className="text-base font-bold text-[#4A3B32]">
+                            {formatBRL(product.preco)}
+                          </strong>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleAddToCart(product)}
+                          className="bg-[#4A3B32] hover:bg-[#362a23] text-[#FAF6F2] px-3.5 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-[#C99649]" />
+                          <span>Adicionar</span>
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleAddToCart(product)}
-                        className="bg-[#4A3B32] hover:bg-[#362a23] text-[#FAF6F2] px-3.5 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-[#C99649]" />
-                        <span>Adicionar</span>
-                      </button>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -1154,7 +1295,7 @@ export default function App() {
                     Painel Administrativo — {config.nomeLoja}
                   </h1>
                   <p className="text-xs text-[#6B584C]">
-                    Gerencie pedidos, categorias personalizadas e fotos dos produtos.
+                    Gerencie pedidos, categorias personalizadas, variações e fotos dos produtos.
                   </p>
                 </div>
 
@@ -1331,7 +1472,8 @@ export default function App() {
                     <h2 className="text-lg font-bold text-[#4A3B32]">Categorias Cadastradas</h2>
                     {categoriesList.length === 0 ? (
                       <p className="text-xs text-[#6B584C]">
-                        Nenhuma categoria encontrada. Rode o SQL da tabela <code>categorias</code> no Supabase ou crie uma ao lado.
+                        Nenhuma categoria encontrada. Crie uma ao lado ou rode o SQL da tabela{' '}
+                        <code>categorias</code> no Supabase.
                       </p>
                     ) : (
                       categoriesList.map((cat) => (
@@ -1399,12 +1541,12 @@ export default function App() {
                 </div>
               )}
 
-              {/* ABA PRODUTOS COM UPLOAD DE FOTO */}
+              {/* ABA PRODUTOS COM CATEGORIAS SINCRONIZADAS, UPLOAD E VARIAÇÕES DROPDOWN */}
               {adminSection === 'produtos' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <form
                     onSubmit={handleSaveProduct}
-                    className="bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-3 h-fit"
+                    className="bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-3.5 h-fit"
                   >
                     <h2 className="text-lg font-bold text-[#4A3B32]">
                       {editingProductId ? 'Editar Produto' : 'Cadastrar Novo Produto'}
@@ -1432,10 +1574,11 @@ export default function App() {
                           className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
                         />
                       </div>
+
                       <div>
                         <label className="block text-xs font-semibold mb-1">Categoria</label>
                         <select
-                          value={newProduct.categoria}
+                          value={newProduct.categoria || categoryNames[0] || ''}
                           onChange={(e) => setNewProduct({ ...newProduct, categoria: e.target.value })}
                           className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
                         >
@@ -1457,6 +1600,73 @@ export default function App() {
                         placeholder="5 dias úteis"
                         className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
                       />
+                    </div>
+
+                    {/* Variações opcionais com dropdown */}
+                    <div className="p-3.5 rounded-2xl bg-[#FAF6F2] border border-[#E5D7CA] space-y-3">
+                      <label className="flex items-center justify-between gap-2 cursor-pointer">
+                        <span className="text-xs font-bold text-[#4A3B32] flex items-center gap-1.5">
+                          <SlidersHorizontal className="w-3.5 h-3.5 text-[#6A8E96]" />
+                          Variações opcionais (dropdown na vitrine)
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={newProduct.variacoesAtivas}
+                          onChange={(e) =>
+                            setNewProduct({ ...newProduct, variacoesAtivas: e.target.checked })
+                          }
+                          className="w-4 h-4 accent-[#D48C84]"
+                        />
+                      </label>
+
+                      {newProduct.variacoesAtivas && (
+                        <div className="space-y-2.5 pt-1 border-t border-[#E8DBD0]">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
+                              Opções de quantidade referente (separadas por vírgula)
+                            </label>
+                            <input
+                              type="text"
+                              value={newProduct.qtyOptionsText}
+                              onChange={(e) =>
+                                setNewProduct({ ...newProduct, qtyOptionsText: e.target.value })
+                              }
+                              placeholder="10 unidades, 20 unidades, 30 unidades"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-white text-xs"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
+                              Opções de cor (separadas por vírgula)
+                            </label>
+                            <input
+                              type="text"
+                              value={newProduct.colorOptionsText}
+                              onChange={(e) =>
+                                setNewProduct({ ...newProduct, colorOptionsText: e.target.value })
+                              }
+                              placeholder="Azul / Creme, Terracota / Dourado"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-white text-xs"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-[#6B584C] mb-1">
+                              Opções de tamanho (separadas por vírgula)
+                            </label>
+                            <input
+                              type="text"
+                              value={newProduct.sizeOptionsText}
+                              onChange={(e) =>
+                                setNewProduct({ ...newProduct, sizeOptionsText: e.target.value })
+                              }
+                              placeholder="Pequeno, Médio, Grande"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-white text-xs"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Upload direto de foto */}
@@ -1521,14 +1731,7 @@ export default function App() {
                           type="button"
                           onClick={() => {
                             setEditingProductId(null);
-                            setNewProduct({
-                              nome: '',
-                              descricao: '',
-                              preco: '',
-                              categoria: categoryNames[0] || '',
-                              prazo: '5 dias úteis',
-                              imagem: ''
-                            });
+                            setNewProduct(emptyProductForm(categoryNames[0] || ''));
                           }}
                           className="px-3 py-2 rounded-xl border border-[#DFCFC1] text-xs font-semibold"
                         >
@@ -1561,6 +1764,9 @@ export default function App() {
                                 <span className={prod.ativo ? 'text-[#6A8E96] font-semibold' : 'text-red-500'}>
                                   {prod.ativo ? 'Ativo' : 'Pausado'}
                                 </span>
+                                {prod.variacoesAtivas && (
+                                  <span className="ml-1.5 text-[#C99649] font-semibold">• Com variações</span>
+                                )}
                               </p>
                             </div>
                           </div>
@@ -1671,7 +1877,7 @@ export default function App() {
                 <>
                   {cart.map((item) => (
                     <div
-                      key={item.id}
+                      key={item.cartKey}
                       className="bg-white p-3 rounded-2xl border border-[#E8DBD0] flex items-center gap-3"
                     >
                       <img
@@ -1680,12 +1886,12 @@ export default function App() {
                         className="w-16 h-16 rounded-xl object-cover shrink-0"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-[#4A3B32] truncate">{item.nome}</p>
+                        <p className="text-sm font-semibold text-[#4A3B32] line-clamp-2">{item.nome}</p>
                         <p className="text-xs text-[#6B584C]">{formatBRL(item.preco)} cada</p>
                         <div className="flex items-center gap-2 mt-2">
                           <button
                             type="button"
-                            onClick={() => handleUpdateQty(item.id, -1)}
+                            onClick={() => handleUpdateQty(item.cartKey, -1)}
                             className="w-6 h-6 rounded-md bg-[#F3EAE2] flex items-center justify-center"
                           >
                             <Minus className="w-3 h-3" />
@@ -1693,7 +1899,7 @@ export default function App() {
                           <span className="text-xs font-bold px-1">{item.quantidade}</span>
                           <button
                             type="button"
-                            onClick={() => handleUpdateQty(item.id, 1)}
+                            onClick={() => handleUpdateQty(item.cartKey, 1)}
                             className="w-6 h-6 rounded-md bg-[#F3EAE2] flex items-center justify-center"
                           >
                             <Plus className="w-3 h-3" />
@@ -1702,7 +1908,7 @@ export default function App() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => handleRemoveFromCart(item.id)}
+                        onClick={() => handleRemoveFromCart(item.cartKey)}
                         className="p-1.5 text-[#9A877B] hover:text-red-500"
                       >
                         <Trash2 className="w-4 h-4" />
