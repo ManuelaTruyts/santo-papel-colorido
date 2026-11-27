@@ -2235,8 +2235,8 @@ export default function App() {
           </span>
           <span>Vitrine artesanal • Supabase + Mercado Pago</span>
         </div>
-      </footer>
-      {lightboxImage && (
+
+ {lightboxImage && (
   <div
     onClick={() => setLightboxImage(null)}
     className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4"
@@ -2260,6 +2260,9 @@ export default function App() {
     </div>
   </div>
 )}
+        
+      </footer>
+     
     </div>
   );
 }
