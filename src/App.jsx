@@ -1115,11 +1115,12 @@ export default function App() {
                     >
                       <div>
                         <div className="relative h-48 bg-[#F4ECE5] overflow-hidden">
-                          <img
-                            src={product.imagem}
-                            alt={product.nome}
-                            className="w-full h-full object-cover hover:scale-105 transition duration-300"
-                          />
+                         <img
+  src={product.imagem}
+  alt={product.nome}
+  onClick={() => setLightboxImage({ src: product.imagem, alt: product.nome })}
+  className="w-full h-full object-cover hover:scale-105 transition duration-300 cursor-pointer"
+/>
                           <span className="absolute top-3 left-3 bg-[#FAF6F2]/95 text-[#4A3B32] text-[11px] font-semibold px-2.5 py-1 rounded-full border border-[#E5D7CA]">
                             {product.categoria}
                           </span>
@@ -2236,6 +2237,10 @@ export default function App() {
           <span>Vitrine artesanal • Supabase + Mercado Pago</span>
         </div>
 
+
+        
+      </footer>
+
  {lightboxImage && (
   <div
     onClick={() => setLightboxImage(null)}
@@ -2260,9 +2265,7 @@ export default function App() {
     </div>
   </div>
 )}
-        
-      </footer>
-     
+      
     </div>
   );
 }
