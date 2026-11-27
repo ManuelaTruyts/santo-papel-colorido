@@ -1331,7 +1331,7 @@ export default function App() {
                     type="password"
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder="Digite santo2026"
+                    placeholder="Digite a senha"
                     className="w-full px-4 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm focus:outline-none focus:border-[#D48C84]"
                   />
                   {adminError && <p className="text-xs text-red-600 mt-1">{adminError}</p>}
