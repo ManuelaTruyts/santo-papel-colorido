@@ -218,6 +218,7 @@ export default function App() {
   const [cepInput, setCepInput] = useState('');
   const [freteCalculado, setFreteCalculado] = useState(null);
   const [toastMsg, setToastMsg] = useState('');
+  const [lightboxImage, setLightboxImage] = useState(null);
 
   // Escolhas do cliente nos dropdowns de cada produto na vitrine: { [productId]: { [varId]: optionValue } }
   const [selectedVariantsByProduct, setSelectedVariantsByProduct] = useState({});
@@ -1131,7 +1132,7 @@ export default function App() {
                           >
                             {product.nome}
                           </h2>
-                          <p className="text-xs text-[#6B584C] line-clamp-2 leading-relaxed">
+                          <p className="text-xs text-[#6B584C] leading-relaxed whitespace-pre-line">
                             {product.descricao}
                           </p>
                           <div className="flex items-center gap-1.5 text-[11px] text-[#6A8E96] font-medium">
@@ -1833,11 +1834,12 @@ export default function App() {
                           className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0]"
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <img
-                              src={prod.imagem}
-                              alt={prod.nome}
-                              className="w-12 h-12 rounded-lg object-cover shrink-0"
-                            />
+                           <img
+  src={product.imagem}
+  alt={product.nome}
+  onClick={() => setLightboxImage({ src: product.imagem, alt: product.nome })}
+  className="w-full h-full object-cover hover:scale-105 transition duration-300 cursor-pointer"
+/>
                             <div className="min-w-0">
                               <p className="font-semibold text-sm text-[#4A3B32] truncate">{prod.nome}</p>
                               <p className="text-xs text-[#6B584C]">
@@ -2234,6 +2236,30 @@ export default function App() {
           <span>Vitrine artesanal • Supabase + Mercado Pago</span>
         </div>
       </footer>
+      {lightboxImage && (
+  <div
+    onClick={() => setLightboxImage(null)}
+    className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4"
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="relative max-w-4xl w-full max-h-[90vh] bg-white rounded-2xl p-3 border border-[#E6D8CC] shadow-2xl flex flex-col items-center gap-2"
+    >
+      <button
+        type="button"
+        onClick={() => setLightboxImage(null)}
+        className="self-end px-3 py-1 rounded-lg bg-[#4A3B32] text-[#FAF6F2] text-xs font-semibold hover:bg-[#352922]"
+      >
+        Fechar
+      </button>
+      <img
+        src={lightboxImage.src}
+        alt={lightboxImage.alt}
+        className="max-h-[78vh] w-auto max-w-full object-contain rounded-xl"
+      />
+    </div>
+  </div>
+)}
     </div>
   );
 }
