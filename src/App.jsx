@@ -1357,4 +1357,883 @@ export default function App() {
                   </h1>
                   <p className="text-xs text-[#6B584C]">
                     Gerencie pedidos, categorias personalizadas, variações e fotos dos produtos.
-                  </p
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={loadAllFromSupabase}
+                    className="px-3 py-2 rounded-xl text-xs font-semibold bg-[#FAF6F2] text-[#4A3B32] border border-[#E5D7CA] flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Atualizar</span>
+                  </button>
+
+                  {[
+                    { id: 'resumo', label: 'Pedidos', icon: TrendingUp },
+                    { id: 'produtos', label: 'Produtos', icon: Tag },
+                    { id: 'categorias', label: 'Categorias', icon: FolderPlus },
+                    { id: 'config', label: 'Configurações', icon: Settings }
+                  ].map((tab) => {
+                    const Icon = tab.icon;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setAdminSection(tab.id)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+                          adminSection === tab.id
+                            ? 'bg-[#D48C84] text-white'
+                            : 'bg-[#FAF6F2] text-[#4A3B32] border border-[#E5D7CA]'
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    onClick={() => setIsAdminAuthenticated(false)}
+                    className="px-3 py-2 rounded-xl text-xs font-semibold text-[#6B584C] hover:bg-[#F3EAE2] flex items-center gap-1"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sair</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-[#E6D8CC]">
+                  <div className="flex items-center justify-between text-xs text-[#6B584C] mb-1">
+                    <span>Faturamento Confirmado</span>
+                    <DollarSign className="w-4 h-4 text-[#C99649]" />
+                  </div>
+                  <p className="text-2xl font-bold text-[#4A3B32]">{formatBRL(metrics.faturamento)}</p>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-[#E6D8CC]">
+                  <div className="flex items-center justify-between text-xs text-[#6B584C] mb-1">
+                    <span>Vendas Aprovadas</span>
+                    <ShoppingCart className="w-4 h-4 text-[#D48C84]" />
+                  </div>
+                  <p className="text-2xl font-bold text-[#4A3B32]">{metrics.vendasCount}</p>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-[#E6D8CC]">
+                  <div className="flex items-center justify-between text-xs text-[#6B584C] mb-1">
+                    <span>Ticket Médio</span>
+                    <TrendingUp className="w-4 h-4 text-[#6A8E96]" />
+                  </div>
+                  <p className="text-2xl font-bold text-[#4A3B32]">{formatBRL(metrics.ticketMedio)}</p>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-[#E6D8CC]">
+                  <div className="flex items-center justify-between text-xs text-[#6B584C] mb-1">
+                    <span>Em Produção</span>
+                    <Package className="w-4 h-4 text-[#6A8E96]" />
+                  </div>
+                  <p className="text-2xl font-bold text-[#4A3B32]">{metrics.emProducao}</p>
+                </div>
+              </div>
+
+              {/* ABA PEDIDOS */}
+              {adminSection === 'resumo' && (
+                <div className="bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-4">
+                  <h2 className="text-lg font-bold text-[#4A3B32]">Pedidos e Rastreio</h2>
+
+                  {orders.length === 0 ? (
+                    <p className="text-sm text-[#6B584C]">Nenhum pedido registrado ainda.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {orders.map((order) => (
+                        <div
+                          key={order.id}
+                          className="p-4 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0] flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-sm text-[#4A3B32]">{order.id}</span>
+                              <span className="text-xs text-[#8B7669]">• {order.criadoEm}</span>
+                              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white border border-[#DFCFC1]">
+                                {order.status}
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium text-[#4A3B32]">
+                              {order.clienteNome} — {order.clienteWhatsapp}
+                            </p>
+                            <p className="text-xs text-[#6B584C]">
+                              {order.itens.map((i) => `${i.quantidade}x ${i.nome}`).join(', ')}{' '}
+                              <strong>• Total: {formatBRL(order.total)}</strong>
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            <select
+                              value={order.status}
+                              onChange={(e) => handleOrderStatusChange(order.id, e.target.value)}
+                              className="px-3 py-2 rounded-xl border border-[#DFCFC1] bg-white text-xs font-medium text-[#4A3B32]"
+                            >
+                              {STATUS_STEPS.map((st) => (
+                                <option key={st} value={st}>
+                                  {st}
+                                </option>
+                              ))}
+                            </select>
+
+                            <input
+                              type="text"
+                              value={order.codigoRastreio || ''}
+                              onChange={(e) => handleTrackingCodeChange(order.id, e.target.value)}
+                              placeholder="Código de rastreio"
+                              className="px-3 py-2 rounded-xl border border-[#DFCFC1] bg-white text-xs text-[#4A3B32] w-full sm:w-44"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ABA CATEGORIAS */}
+              {adminSection === 'categorias' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <form
+                    onSubmit={handleAddCategory}
+                    className="bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-3 h-fit"
+                  >
+                    <h2 className="text-lg font-bold text-[#4A3B32]">Nova Categoria</h2>
+                    <p className="text-xs text-[#6B584C]">
+                      Crie grupos como Cadernos, Blocos, Adesivos, Planners ou Caixas.
+                    </p>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Nome da categoria</label>
+                      <input
+                        type="text"
+                        required
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        placeholder="Ex.: Cadernos Personalizados"
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={savingAction}
+                      className="w-full bg-[#D48C84] hover:bg-[#c37971] text-white py-2.5 rounded-xl text-xs font-semibold transition"
+                    >
+                      {savingAction ? 'Salvando...' : 'Criar Categoria'}
+                    </button>
+                  </form>
+
+                  <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-3">
+                    <h2 className="text-lg font-bold text-[#4A3B32]">Categorias Cadastradas</h2>
+                    {categoriesList.length === 0 ? (
+                      <p className="text-xs text-[#6B584C]">
+                        Nenhuma categoria encontrada. Crie uma ao lado ou rode o SQL da tabela{' '}
+                        <code>categorias</code> no Supabase.
+                      </p>
+                    ) : (
+                      categoriesList.map((cat) => (
+                        <div
+                          key={cat.id}
+                          className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0]"
+                        >
+                          {editingCategory?.id === cat.id ? (
+                            <form onSubmit={handleRenameCategory} className="flex-1 flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editingCategory.nome}
+                                onChange={(e) =>
+                                  setEditingCategory({ ...editingCategory, nome: e.target.value })
+                                }
+                                className="flex-1 px-3 py-1.5 rounded-lg border border-[#DFCFC1] bg-white text-sm"
+                              />
+                              <button
+                                type="submit"
+                                className="px-3 py-1.5 rounded-lg bg-[#6A8E96] text-white text-xs font-semibold"
+                              >
+                                Salvar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingCategory(null)}
+                                className="px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] text-xs"
+                              >
+                                Cancelar
+                              </button>
+                            </form>
+                          ) : (
+                            <>
+                              <span className="font-semibold text-sm text-[#4A3B32]">{cat.nome}</span>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEditingCategory({
+                                      id: cat.id,
+                                      nome: cat.nome,
+                                      nomeOriginal: cat.nome
+                                    })
+                                  }
+                                  className="p-2 rounded-lg bg-white border border-[#DFCFC1] hover:bg-[#F3EAE2]"
+                                  title="Renomear categoria"
+                                >
+                                  <Edit3 className="w-4 h-4 text-[#4A3B32]" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteCategory(cat)}
+                                  className="p-2 rounded-lg bg-white border border-[#DFCFC1] hover:bg-red-50 text-red-600"
+                                  title="Excluir categoria"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ABA PRODUTOS COM CATEGORIAS SINCRONIZADAS, UPLOAD E VARIAÇÕES DINÂMICAS */}
+              {adminSection === 'produtos' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <form
+                    onSubmit={handleSaveProduct}
+                    className="bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-3.5 h-fit"
+                  >
+                    <h2 className="text-lg font-bold text-[#4A3B32]">
+                      {editingProductId ? 'Editar Produto' : 'Cadastrar Novo Produto'}
+                    </h2>
+
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Nome do item</label>
+                      <input
+                        type="text"
+                        value={newProduct.nome}
+                        onChange={(e) => setNewProduct({ ...newProduct, nome: e.target.value })}
+                        placeholder="Ex.: Topo de Bolo Bailarina"
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-xs font-semibold mb-1">Preço (R$)</label>
+                        <input
+                          type="text"
+                          value={newProduct.preco}
+                          onChange={(e) => setNewProduct({ ...newProduct, preco: e.target.value })}
+                          placeholder="45.00"
+                          className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold mb-1">Categoria</label>
+                        <select
+                          value={newProduct.categoria || categoryNames[0] || ''}
+                          onChange={(e) => setNewProduct({ ...newProduct, categoria: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                        >
+                          {categoryNames.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Prazo de produção</label>
+                      <input
+                        type="text"
+                        value={newProduct.prazo}
+                        onChange={(e) => setNewProduct({ ...newProduct, prazo: e.target.value })}
+                        placeholder="5 dias úteis"
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+
+                    {/* Variações opcionais dinâmicas com dropdown */}
+                    <div className="p-3.5 rounded-2xl bg-[#FAF6F2] border border-[#E5D7CA] space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-[#4A3B32]">
+                          <SlidersHorizontal className="w-3.5 h-3.5 text-[#6A8E96]" />
+                          <span>Variações opcionais (dropdown na vitrine)</span>
+                          <input
+                            type="checkbox"
+                            checked={newProduct.variacoesAtivas}
+                            onChange={(e) =>
+                              setNewProduct({ ...newProduct, variacoesAtivas: e.target.checked })
+                            }
+                            className="w-4 h-4 accent-[#D48C84] ml-1"
+                          />
+                        </label>
+                      </div>
+
+                      {newProduct.variacoesAtivas && (
+                        <div className="space-y-2.5 pt-2 border-t border-[#E8DBD0]">
+                          {(newProduct.variacoesList || []).map((v, idx) => (
+                            <div
+                              key={v.id}
+                              className="p-2.5 rounded-xl bg-white border border-[#E6D8CC] space-y-2"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[11px] font-bold text-[#6A8E96]">
+                                  Variação {idx + 1}
+                                </span>
+
+                                <div className="flex items-center gap-2.5">
+                                  <label className="flex items-center gap-1 text-[11px] font-semibold text-[#4A3B32] cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={v.visivel !== false}
+                                      onChange={(e) =>
+                                        handleUpdateVariationRow(v.id, 'visivel', e.target.checked)
+                                      }
+                                      className="w-3.5 h-3.5 accent-[#6A8E96]"
+                                    />
+                                    <span>Visível</span>
+                                  </label>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveVariationRow(v.id)}
+                                    className="text-[#9A877B] hover:text-red-600 p-0.5"
+                                    title="Remover esta variação"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <input
+                                type="text"
+                                value={v.titulo}
+                                onChange={(e) =>
+                                  handleUpdateVariationRow(v.id, 'titulo', e.target.value)
+                                }
+                                placeholder="Título do campo (ex.: Cor, Tamanho, Modelo, Fita)"
+                                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-[#FAF6F2] text-xs font-semibold text-[#4A3B32]"
+                              />
+
+                              <input
+                                type="text"
+                                value={v.opcoesText}
+                                onChange={(e) =>
+                                  handleUpdateVariationRow(v.id, 'opcoesText', e.target.value)
+                                }
+                                placeholder="Opções separadas por vírgula (ex.: Azul, Creme, Dourado)"
+                                className="w-full px-2.5 py-1.5 rounded-lg border border-[#DFCFC1] bg-white text-xs text-[#4A3B32]"
+                              />
+                            </div>
+                          ))}
+
+                          <button
+                            type="button"
+                            onClick={handleAddVariationRow}
+                            className="w-full py-2 px-3 rounded-xl border border-dashed border-[#6A8E96] bg-white hover:bg-[#EAF1F3]/60 text-xs font-semibold text-[#4E6E75] flex items-center justify-center gap-1.5 transition"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Adicionar outra variação</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Upload direto de foto */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold">Foto do produto</label>
+                      <label className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl border-2 border-dashed border-[#D48C84] bg-[#FAF6F2] hover:bg-[#F4EAE3] cursor-pointer text-xs font-semibold text-[#4A3B32] transition">
+                        <Upload className="w-4 h-4 text-[#D48C84]" />
+                        <span>
+                          {uploadingImage ? 'Enviando foto...' : 'Escolher foto do aparelho'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={uploadingImage}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {newProduct.imagem && (
+                        <div className="flex items-center gap-3 p-2 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0]">
+                          <img
+                            src={newProduct.imagem}
+                            alt="Prévia"
+                            className="w-12 h-12 rounded-lg object-cover shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-semibold text-[#6A8E96] flex items-center gap-1">
+                              <ImageIcon className="w-3 h-3" /> Foto pronta
+                            </p>
+                            <p className="text-[10px] text-[#8B7669] truncate">{newProduct.imagem}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Descrição</label>
+                      <textarea
+                        rows={2}
+                        value={newProduct.descricao}
+                        onChange={(e) => setNewProduct({ ...newProduct, descricao: e.target.value })}
+                        placeholder="Detalhes do papel, personalização e medidas..."
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="submit"
+                        disabled={savingAction || uploadingImage}
+                        className="flex-1 bg-[#D48C84] hover:bg-[#c37971] text-white py-2.5 rounded-xl text-xs font-semibold transition disabled:opacity-60"
+                      >
+                        {savingAction
+                          ? 'Salvando...'
+                          : editingProductId
+                            ? 'Salvar Alterações'
+                            : 'Adicionar à Vitrine'}
+                      </button>
+                      {editingProductId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingProductId(null);
+                            setNewProduct(emptyProductForm(categoryNames[0] || ''));
+                          }}
+                          className="px-3 py-2 rounded-xl border border-[#DFCFC1] text-xs font-semibold"
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                    </div>
+                  </form>
+
+                  <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-3">
+                    <h2 className="text-lg font-bold text-[#4A3B32]">Catálogo Cadastrado</h2>
+                    {products.length === 0 ? (
+                      <p className="text-sm text-[#6B584C]">Nenhum produto cadastrado ainda.</p>
+                    ) : (
+                      products.map((prod) => (
+                        <div
+                          key={prod.id}
+                          className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0]"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <img
+                              src={prod.imagem}
+                              alt={prod.nome}
+                              className="w-12 h-12 rounded-lg object-cover shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <p className="font-semibold text-sm text-[#4A3B32] truncate">{prod.nome}</p>
+                              <p className="text-xs text-[#6B584C]">
+                                {formatBRL(prod.preco)} • {prod.categoria} •{' '}
+                                <span className={prod.ativo ? 'text-[#6A8E96] font-semibold' : 'text-red-500'}>
+                                  {prod.ativo ? 'Ativo' : 'Pausado'}
+                                </span>
+                                {prod.variacoesAtivas && (prod.variacoesVisiveis?.length || 0) > 0 && (
+                                  <span className="ml-1.5 text-[#C99649] font-semibold">
+                                    • {prod.variacoesVisiveis.length} variação(ões)
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditProduct(prod)}
+                              className="p-2 rounded-lg bg-white border border-[#DFCFC1] hover:bg-[#F3EAE2]"
+                              title="Editar"
+                            >
+                              <Edit3 className="w-4 h-4 text-[#4A3B32]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleProductActive(prod)}
+                              className="px-2.5 py-1.5 rounded-lg bg-white border border-[#DFCFC1] text-xs font-medium"
+                            >
+                              {prod.ativo ? 'Pausar' : 'Ativar'}
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ABA CONFIGURAÇÕES */}
+              {adminSection === 'config' && (
+                <div className="bg-white rounded-2xl border border-[#E6D8CC] p-6 max-w-2xl space-y-4">
+                  <h2 className="text-lg font-bold text-[#4A3B32]">Configurações da Vitrine e Frete</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Nome da marca</label>
+                      <input
+                        type="text"
+                        value={config.nomeLoja}
+                        onChange={(e) => handleSaveConfig({ nomeLoja: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Frase / Subtítulo</label>
+                      <input
+                        type="text"
+                        value={config.subtitulo}
+                        onChange={(e) => handleSaveConfig({ subtitulo: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Frete base (R$)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={config.freteBase}
+                        onChange={(e) =>
+                          handleSaveConfig({ freteBase: Number(e.target.value) || 0 })
+                        }
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Frete grátis acima de (R$)</label>
+                      <input
+                        type="number"
+                        step="5"
+                        value={config.freteGratisAcima}
+                        onChange={(e) =>
+                          handleSaveConfig({ freteGratisAcima: Number(e.target.value) || 0 })
+                        }
+                        className="w-full px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+      )}
+
+      {isCartOpen && (
+        <div className="fixed inset-0 z-40 flex justify-end bg-black/40">
+          <div className="w-full max-w-md bg-[#FAF6F2] h-full shadow-2xl flex flex-col justify-between border-l border-[#E5D7CA]">
+            <div className="p-5 border-b border-[#E5D7CA] flex items-center justify-between bg-white">
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-[#D48C84]" />
+                <h2 className="font-bold text-base text-[#4A3B32]">Sua Sacola</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCartOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-[#F3EAE2]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {cart.length === 0 ? (
+                <div className="text-center py-12 space-y-2">
+                  <p className="text-sm font-medium text-[#6B584C]">Sua sacola está vazia.</p>
+                  <p className="text-xs text-[#8B7669]">Adicione itens da vitrine para calcular o frete.</p>
+                </div>
+              ) : (
+                <>
+                  {cart.map((item) => (
+                    <div
+                      key={item.cartKey}
+                      className="bg-white p-3 rounded-2xl border border-[#E8DBD0] flex items-center gap-3"
+                    >
+                      <img
+                        src={item.imagem}
+                        alt={item.nome}
+                        className="w-16 h-16 rounded-xl object-cover shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-[#4A3B32] line-clamp-2">{item.nome}</p>
+                        <p className="text-xs text-[#6B584C]">{formatBRL(item.preco)} cada</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateQty(item.cartKey, -1)}
+                            className="w-6 h-6 rounded-md bg-[#F3EAE2] flex items-center justify-center"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="text-xs font-bold px-1">{item.quantidade}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateQty(item.cartKey, 1)}
+                            className="w-6 h-6 rounded-md bg-[#F3EAE2] flex items-center justify-center"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFromCart(item.cartKey)}
+                        className="p-1.5 text-[#9A877B] hover:text-red-500"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+
+                  <form
+                    onSubmit={handleCalcularFrete}
+                    className="bg-white p-4 rounded-2xl border border-[#E8DBD0] space-y-2"
+                  >
+                    <label className="block text-xs font-semibold text-[#4A3B32]">
+                      Calcular frete por CEP
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={cepInput}
+                        onChange={(e) => setCepInput(e.target.value)}
+                        placeholder="00000-000"
+                        className="flex-1 px-3 py-2 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-xs"
+                      />
+                      <button
+                        type="submit"
+                        className="px-3.5 py-2 rounded-xl bg-[#6A8E96] text-white text-xs font-semibold"
+                      >
+                        Calcular
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
+
+            {cart.length > 0 && (
+              <div className="p-5 bg-white border-t border-[#E5D7CA] space-y-3">
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between text-[#6B584C]">
+                    <span>Subtotal</span>
+                    <span>{formatBRL(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-[#6B584C]">
+                    <span>Frete</span>
+                    <span>{freteAtual === 0 ? 'Grátis' : formatBRL(freteAtual)}</span>
+                  </div>
+                  <div className="flex justify-between text-base font-bold text-[#4A3B32] pt-2 border-t border-[#F3ECE5]">
+                    <span>Total</span>
+                    <span>{formatBRL(totalCarrinho)}</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleOpenCheckout}
+                  className="w-full bg-[#D48C84] hover:bg-[#c47971] text-white py-3 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2"
+                >
+                  <span>Concluir Pedido</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isCheckoutOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 border border-[#E6D8CC] shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#F3ECE5] pb-3">
+              <h2
+                className="text-2xl font-semibold text-[#4A3B32]"
+                style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+              >
+                {pendingOrder ? `Pedido ${pendingOrder.id}` : 'Finalizar Encomenda'}
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCheckoutOpen(false);
+                  setPendingOrder(null);
+                }}
+                className="p-1.5 rounded-lg hover:bg-[#FAF6F2]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {!pendingOrder ? (
+              <form onSubmit={handleCreatePixOrder} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-semibold mb-1 flex items-center gap-1">
+                    <User className="w-3.5 h-3.5 text-[#D48C84]" /> Seu nome completo
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={checkoutForm.clienteNome}
+                    onChange={(e) => setCheckoutForm({ ...checkoutForm, clienteNome: e.target.value })}
+                    placeholder="Ex.: Mariana Souza"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold mb-1 flex items-center gap-1">
+                      <Phone className="w-3.5 h-3.5 text-[#6A8E96]" /> WhatsApp
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={checkoutForm.clienteWhatsapp}
+                      onChange={(e) =>
+                        setCheckoutForm({ ...checkoutForm, clienteWhatsapp: e.target.value })
+                      }
+                      placeholder="(12) 99999-0000"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1 flex items-center gap-1">
+                      <Mail className="w-3.5 h-3.5 text-[#C99649]" /> E-mail (comprovante Pix)
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={checkoutForm.clienteEmail}
+                      onChange={(e) =>
+                        setCheckoutForm({ ...checkoutForm, clienteEmail: e.target.value })
+                      }
+                      placeholder="voce@email.com"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold mb-1">CEP</label>
+                    <input
+                      type="text"
+                      value={checkoutForm.clienteCep}
+                      onChange={(e) => setCheckoutForm({ ...checkoutForm, clienteCep: e.target.value })}
+                      placeholder="12300-000"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold mb-1">Endereço de entrega</label>
+                    <input
+                      type="text"
+                      value={checkoutForm.clienteEndereco}
+                      onChange={(e) =>
+                        setCheckoutForm({ ...checkoutForm, clienteEndereco: e.target.value })
+                      }
+                      placeholder="Rua, número, bairro, cidade"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-[#FAF6F2] border border-[#E8DBD0] flex items-center justify-between text-sm">
+                  <span className="font-medium text-[#6B584C]">Total a pagar via Pix:</span>
+                  <strong className="text-lg text-[#4A3B32]">{formatBRL(totalCarrinho)}</strong>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={savingAction}
+                  className="w-full bg-[#4A3B32] hover:bg-[#352922] text-[#FAF6F2] py-3 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  <QrCode className="w-4 h-4 text-[#C99649]" />
+                  <span>{savingAction ? 'Gerando Pix...' : 'Gerar QR Code Pix'}</span>
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-4 text-center">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#EAF1F3] text-[#4E6E75]">
+                  <span>Status: {pendingOrder.status}</span>
+                </div>
+
+                {pendingOrder.qrCodeBase64 ? (
+                  <div className="mx-auto w-48 h-48 rounded-2xl border border-[#E6D8CC] bg-white p-2 flex items-center justify-center shadow-sm">
+                    <img
+                      src={`data:image/png;base64,${pendingOrder.qrCodeBase64}`}
+                      alt="QR Code Pix Mercado Pago"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="mx-auto w-40 h-40 rounded-2xl border-2 border-dashed border-[#C99649] bg-[#FAF6F2] flex flex-col items-center justify-center p-3">
+                    <QrCode className="w-20 h-20 text-[#4A3B32]" />
+                  </div>
+                )}
+
+                <p className="text-base font-bold text-[#4A3B32]">
+                  Valor: {formatBRL(pendingOrder.total)}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={handleCopyPix}
+                  className="w-full py-2.5 px-4 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-xs font-semibold flex items-center justify-center gap-2"
+                >
+                  {copiedPix ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span>Código Pix Copia e Cola copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 text-[#6A8E96]" />
+                      <span>Copiar código Pix Copia e Cola</span>
+                    </>
+                  )}
+                </button>
+
+                {pendingOrder.status === 'Aguardando Pagamento' ? (
+                  <p className="text-xs text-[#6B584C]">
+                    Abra o app do seu banco e pague o Pix. Assim que o pagamento for confirmado pelo Mercado Pago, esta tela atualiza automaticamente.
+                  </p>
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900">
+                    <p className="font-semibold">
+                      Pagamento confirmado! Anote o código <strong>{pendingOrder.id}</strong> para acompanhar o envio.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <footer className="bg-white border-t border-[#E8DBD0] py-6 px-4 text-center text-xs text-[#7C685B]">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>
+            <strong>{config.nomeLoja}</strong> — {config.subtitulo}
+          </span>
+          <span>Vitrine artesanal • Supabase + Mercado Pago</span>
+        </div>
+      </footer>
+    </div>
+  );
+}
