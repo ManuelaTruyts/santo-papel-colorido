@@ -77,6 +77,8 @@ const DEFAULT_CUSTOM_VARIATIONS = [
 ];
 
 const STATUS_STEPS = ['Aguardando Pagamento', 'Em Produção', 'Enviado', 'Concluído'];
+const ADMIN_SESSION_KEY = 'spc_admin_session_v1';
+const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
 function formatBRL(value) {
   return Number(value || 0).toLocaleString('pt-BR', {
@@ -238,7 +240,20 @@ export default function App() {
   const [foundOrder, setFoundOrder] = useState(null);
   const [trackingSearched, setTrackingSearched] = useState(false);
 
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
+  try {
+    const raw = localStorage.getItem(ADMIN_SESSION_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.expiresAt === 'number' && Date.now() < parsed.expiresAt) {
+      return true;
+    }
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+    return false;
+  } catch {
+    return false;
+  }
+});
   const [adminPassword, setAdminPassword] = useState('');
   const [adminError, setAdminError] = useState('');
   const [adminSection, setAdminSection] = useState('resumo');
@@ -792,14 +807,20 @@ export default function App() {
     setFoundOrder(match || null);
   };
 
-  const handleAdminLogin = (e) => {
+const handleAdminLogin = (e) => {
     e.preventDefault();
     if (adminPassword.trim() === 'santo2026' || adminPassword.trim() === '1234') {
+      try {
+        localStorage.setItem(
+          ADMIN_SESSION_KEY,
+          JSON.stringify({ expiresAt: Date.now() + ADMIN_SESSION_TTL_MS })
+        );
+      } catch {}
       setIsAdminAuthenticated(true);
       setAdminError('');
       setAdminPassword('');
     } else {
-      setAdminError('Senha incorreta. Dica para teste: santo2026');
+      setAdminError('Senha incorreta.');
     }
   };
 
