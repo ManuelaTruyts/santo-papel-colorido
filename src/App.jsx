@@ -1028,24 +1028,26 @@ export default function App() {
     }
   };
 
-  const handleStartEditProduct = (prod) => {
-    setEditingProductId(prod.id);
-    const existingVars = normalizeStoredVariations(prod);
+const handleStartEditProduct = (prod) => {
+    const latestProd = products.find((p) => p.id === prod.id) || prod;
+    setEditingProductId(latestProd.id);
+    const existingVars = normalizeStoredVariations(latestProd);
     setNewProduct({
-      nome: prod.nome,
-      descricao: prod.descricao,
-      preco: String(prod.preco),
-      categoria: prod.categoria,
-      prazo: prod.prazo,
-      imagem: prod.imagem,
-      variacoesAtivas: Boolean(prod.variacoesAtivas),
+      nome: latestProd.nome,
+      descricao: latestProd.descricao,
+      preco: String(latestProd.preco),
+      categoria: latestProd.categoria,
+      prazo: latestProd.prazo,
+      imagem: latestProd.imagem,
+      variacoesAtivas: Boolean(latestProd.variacoesAtivas),
       variacoesList:
         existingVars.length > 0
-          ? existingVars
+          ? existingVars.map((v) => ({ ...v }))
           : DEFAULT_CUSTOM_VARIATIONS.map((v) => ({ ...v }))
     });
   };
 
+  
   const handleToggleProductActive = async (prod) => {
     if (!supabase) return;
     const nextActive = !prod.ativo;
