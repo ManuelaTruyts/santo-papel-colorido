@@ -1856,12 +1856,12 @@ const handleAdminLogin = (e) => {
                           className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0]"
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                           <img
-  src={product.imagem}
-  alt={product.nome}
-  onClick={() => setLightboxImage({ src: product.imagem, alt: product.nome })}
-  className="w-full h-full object-cover hover:scale-105 transition duration-300 cursor-pointer"
-/>
+                       <img
+                              src={prod.imagem}
+                              alt={prod.nome}
+                              className="w-12 h-12 rounded-lg object-cover shrink-0"
+                            />
+                            
                             <div className="min-w-0">
                               <p className="font-semibold text-sm text-[#4A3B32] truncate">{prod.nome}</p>
                               <p className="text-xs text-[#6B584C]">
