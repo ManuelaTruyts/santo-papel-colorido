@@ -2159,25 +2159,19 @@ const handleAdminLogin = (e) => {
                 className="text-2xl font-semibold text-[#4A3B32]"
                 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
               >
-                {pendingOrder ? `Pedido ${pendingOrder.id}` : 'Finalizar Encomenda'
-                
-                <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold mb-1">
-                      Endereço de entrega{' '}
-                      {lookingUpCep && (
-                        <span className="text-[#6A8E96] font-normal">(buscando logradouro...)</span>
-                      )}
-                    </label>
-                    <input
-                      type="text"
-                      value={checkoutForm.clienteEndereco}
-                      onChange={(e) =>
-                        setCheckoutForm({ ...checkoutForm, clienteEndereco: e.target.value })
-                      }
-                      placeholder="Rua, bairro, cidade — complete com número e complemento"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
-                    />
-                  </div>
+                {pendingOrder ? `Pedido ${pendingOrder.id}` : 'Finalizar Encomenda'}
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCheckoutOpen(false);
+                  setPendingOrder(null);
+                }}
+                className="p-1.5 rounded-lg hover:bg-[#FAF6F2]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
               }
               </h2>
               <button
@@ -2241,11 +2235,12 @@ const handleAdminLogin = (e) => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs font-semibold mb-1">CEP</label>
                     <input
                       type="text"
+                      required
                       value={checkoutForm.clienteCep}
                       onChange={(e) => setCheckoutForm({ ...checkoutForm, clienteCep: e.target.value })}
                       placeholder="12300-000"
@@ -2253,14 +2248,21 @@ const handleAdminLogin = (e) => {
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold mb-1">Endereço de entrega</label>
+                    <label className="block text-xs font-semibold mb-1">
+                      Endereço de entrega{' '}
+                      {lookingUpCep && (
+                        <span className="text-[#6A8E96] font-normal">(buscando logradouro...)</span>
+                      )}
+                    </label>
                     <input
                       type="text"
                       value={checkoutForm.clienteEndereco}
-                      onChange={(e) =>
-                        setCheckoutForm({ ...checkoutForm, clienteEndereco: e.target.value })
-                      }
-                      placeholder="Rua, número, bairro, cidade"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setIsAddressManuallyEdited(val.trim() !== '');
+                        setCheckoutForm({ ...checkoutForm, clienteEndereco: val });
+                      }}
+                      placeholder="Rua, bairro, cidade — complete com número e complemento"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
                     />
                   </div>
