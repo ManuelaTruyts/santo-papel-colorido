@@ -2424,7 +2424,7 @@ export default function App() {
                   <span>Status: {pendingOrder.status}</span>
                 </div>
 
-                {pendingOrder.qrCodeBase64 ? (
+               {pendingOrder.qrCodeBase64 ? (
                   <div className="mx-auto w-48 h-48 rounded-2xl border border-[#E6D8CC] bg-white p-2 flex items-center justify-center shadow-sm">
                     <img
                       src={`data:image/png;base64,${pendingOrder.qrCodeBase64}`}
@@ -2432,6 +2432,20 @@ export default function App() {
                       className="w-full h-full object-contain"
                     />
                   </div>
+                ) : (
+                  <div className="mx-auto w-40 h-40 rounded-2xl border-2 border-dashed border-[#C99649] bg-[#FAF6F2] flex flex-col items-center justify-center p-3">
+                    <QrCode className="w-20 h-20 text-[#4A3B32]" />
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <p className="text-base font-bold text-[#4A3B32]">
+                    Valor: {formatBRL(pendingOrder.total)}
+                  </p>
+                  <p className="text-[11px] text-[#7C685B] bg-[#FAF6F2] border border-[#E8DBD0] rounded-xl px-3 py-1.5 inline-block">
+                    Loja: <strong className="text-[#4A3B32]">{config.nomeLoja}</strong> • Recebedor no banco: titular do ateliê (Mônica)
+                  </p>
+                </div>
                 ) : (
                   <div className="mx-auto w-40 h-40 rounded-2xl border-2 border-dashed border-[#C99649] bg-[#FAF6F2] flex flex-col items-center justify-center p-3">
                     <QrCode className="w-20 h-20 text-[#4A3B32]" />
