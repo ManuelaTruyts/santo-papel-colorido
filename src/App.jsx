@@ -104,18 +104,26 @@ function createNewVariationItem(index = 1) {
 }
 
 function normalizeStoredVariations(productRow) {
-  if (Array.isArray(productRow.variacoes_custom) && productRow.variacoes_custom.length > 0) {
-    return productRow.variacoes_custom.map((v, idx) => ({
-      id: v.id || `var-${idx + 1}`,
-      titulo: String(v.titulo || `Opção ${idx + 1}`),
-      opcoesText: Array.isArray(v.opcoes)
+  let rawCustom = productRow.variacoes_custom;
+  if (typeof rawCustom === 'string') {
+    try {
+      rawCustom = JSON.parse(rawCustom);
+    } catch {
+      rawCustom = [];
+    }
+  }
+
+  if (Array.isArray(rawCustom) && rawCustom.length > 0) {
+    return rawCustom.map((v, idx) => ({
+      id: v?.id || `var-${idx + 1}`,
+      titulo: String(v?.titulo || `Opção ${idx + 1}`),
+      opcoesText: Array.isArray(v?.opcoes)
         ? v.opcoes.join(', ')
-        : String(v.opcoesText || ''),
-      visivel: v.visivel !== false
+        : String(v?.opcoesText || ''),
+      visivel: v?.visivel !== false
     }));
   }
 
-  // Compatibilidade caso exista produto antigo sem variacoes_custom
   if (productRow.variacoes_ativas) {
     const legacy = [];
     if (Array.isArray(productRow.opcoes_quantidade) && productRow.opcoes_quantidade.length > 0) {
@@ -226,35 +234,6 @@ async function lookupCepAddress(rawCep) {
 }
 
 export default function App() {
-
-  const [lastLookedUpCep, setLastLookedUpCep] = useState('');
-  const [lookingUpCep, setLookingUpCep] = useState(false);
-
-  useEffect(() => {
-    const digits = checkoutForm.clienteCep.replace(/\D/g, '');
-    if (digits.length !== 8 || digits === lastLookedUpCep) return;
-
-    let cancelled = false;
-    setLookingUpCep(true);
-
-    lookupCepAddress(digits).then((enderecoEncontrado) => {
-      if (cancelled) return;
-      setLookingUpCep(false);
-      setLastLookedUpCep(digits);
-
-      if (enderecoEncontrado) {
-        setCheckoutForm((prev) => ({
-          ...prev,
-          clienteEndereco: enderecoEncontrado
-        }));
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [checkoutForm.clienteCep, lastLookedUpCep]);
-  
   const [products, setProducts] = useState([]);
   const [categoriesList, setCategoriesList] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -273,7 +252,6 @@ export default function App() {
   const [toastMsg, setToastMsg] = useState('');
   const [lightboxImage, setLightboxImage] = useState(null);
 
-  // Escolhas do cliente nos dropdowns de cada produto na vitrine: { [productId]: { [varId]: optionValue } }
   const [selectedVariantsByProduct, setSelectedVariantsByProduct] = useState({});
 
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -284,6 +262,40 @@ export default function App() {
     clienteCep: '',
     clienteEndereco: ''
   });
+  const [lastLookedUpCep, setLastLookedUpCep] = useState('');
+  const [lookingUpCep, setLookingUpCep] = useState(false);
+  const [isAddressManuallyEdited, setIsAddressManuallyEdited] = useState(false);
+
+  useEffect(() => {
+    const digits = checkoutForm.clienteCep.replace(/\D/g, '');
+    if (digits.length !== 8 || digits === lastLookedUpCep) return;
+
+    let cancelled = false;
+    setLookingUpCep(true);
+
+    lookupCepAddress(digits).then((enderecoEncontrado) => {
+      if (cancelled) return;
+      setLookingUpCep(false);
+      setLastLookedUpCep(digits);
+
+      if (enderecoEncontrado) {
+        setCheckoutForm((prev) => {
+          if (isAddressManuallyEdited && prev.clienteEndereco.trim() !== '') {
+            return prev;
+          }
+          return {
+            ...prev,
+            clienteEndereco: enderecoEncontrado
+          };
+        });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutForm.clienteCep, lastLookedUpCep, isAddressManuallyEdited]);
+
   const [pendingOrder, setPendingOrder] = useState(null);
   const [copiedPix, setCopiedPix] = useState(false);
 
@@ -291,29 +303,27 @@ export default function App() {
   const [foundOrder, setFoundOrder] = useState(null);
   const [trackingSearched, setTrackingSearched] = useState(false);
 
-const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
-  try {
-    const raw = localStorage.getItem(ADMIN_SESSION_KEY);
-    if (!raw) return false;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed.expiresAt === 'number' && Date.now() < parsed.expiresAt) {
-      return true;
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
+    try {
+      const raw = localStorage.getItem(ADMIN_SESSION_KEY);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.expiresAt === 'number' && Date.now() < parsed.expiresAt) {
+        return true;
+      }
+      localStorage.removeItem(ADMIN_SESSION_KEY);
+      return false;
+    } catch {
+      return false;
     }
-    localStorage.removeItem(ADMIN_SESSION_KEY);
-    return false;
-  } catch {
-    return false;
-  }
-});
+  });
   const [adminPassword, setAdminPassword] = useState('');
   const [adminError, setAdminError] = useState('');
   const [adminSection, setAdminSection] = useState('resumo');
 
-  // Gestão de Categorias
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategory, setEditingCategory] = useState(null);
 
-  // Gestão de Produtos
   const [newProduct, setNewProduct] = useState(emptyProductForm(''));
   const [editingProductId, setEditingProductId] = useState(null);
 
@@ -511,7 +521,6 @@ const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
     return { faturamento, vendasCount, ticketMedio, emProducao };
   }, [orders]);
 
-  // Funções para gerenciar as variações dinâmicas no formulário de produto
   const handleAddVariationRow = () => {
     setNewProduct((prev) => {
       const nextIndex = (prev.variacoesList?.length || 0) + 1;
@@ -539,7 +548,6 @@ const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
     }));
   };
 
-  // Upload direto para Supabase Storage
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -576,7 +584,6 @@ const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
     }
   };
 
-  // CRUD de Categorias
   const handleAddCategory = async (e) => {
     e.preventDefault();
     const trimmed = newCategoryName.trim();
@@ -688,6 +695,7 @@ const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
         }
       ];
     });
+    setIsCartOpen(false);
     showToast(`"${product.nome}" adicionado à sacola`);
   };
 
@@ -728,6 +736,8 @@ const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
 
   const handleOpenCheckout = () => {
     if (cart.length === 0) return;
+    setIsAddressManuallyEdited(false);
+    setLastLookedUpCep('');
     setCheckoutForm((prev) => ({
       ...prev,
       clienteCep: cepInput || prev.clienteCep
@@ -736,7 +746,7 @@ const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
     setIsCheckoutOpen(true);
   };
 
-const handleCreatePixOrder = async (e) => {
+  const handleCreatePixOrder = async (e) => {
     e.preventDefault();
     if (!checkoutForm.clienteNome.trim() || !checkoutForm.clienteWhatsapp.trim()) {
       showToast('Preencha nome e WhatsApp para gerar o pedido');
@@ -781,6 +791,7 @@ const handleCreatePixOrder = async (e) => {
       if (!pixRes.ok) {
         throw new Error(pixData.error || 'Falha ao gerar Pix no Mercado Pago');
       }
+
       const { data: insertedOrder, error: orderErr } = await supabase
         .from('pedidos')
         .insert({
@@ -871,7 +882,7 @@ const handleCreatePixOrder = async (e) => {
     setFoundOrder(match || null);
   };
 
-const handleAdminLogin = (e) => {
+  const handleAdminLogin = (e) => {
     e.preventDefault();
     if (adminPassword.trim() === 'santo2026' || adminPassword.trim() === '1234') {
       try {
@@ -886,6 +897,13 @@ const handleAdminLogin = (e) => {
     } else {
       setAdminError('Senha incorreta.');
     }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminAuthenticated(false);
+    try {
+      localStorage.removeItem(ADMIN_SESSION_KEY);
+    } catch {}
   };
 
   const handleOrderStatusChange = async (orderId, nextStatus) => {
@@ -1200,12 +1218,12 @@ const handleAdminLogin = (e) => {
                     >
                       <div>
                         <div className="relative h-48 bg-[#F4ECE5] overflow-hidden">
-                         <img
-  src={product.imagem}
-  alt={product.nome}
-  onClick={() => setLightboxImage({ src: product.imagem, alt: product.nome })}
-  className="w-full h-full object-cover hover:scale-105 transition duration-300 cursor-pointer"
-/>
+                          <img
+                            src={product.imagem}
+                            alt={product.nome}
+                            onClick={() => setLightboxImage({ src: product.imagem, alt: product.nome })}
+                            className="w-full h-full object-cover hover:scale-105 transition duration-300 cursor-pointer"
+                          />
                           <span className="absolute top-3 left-3 bg-[#FAF6F2]/95 text-[#4A3B32] text-[11px] font-semibold px-2.5 py-1 rounded-full border border-[#E5D7CA]">
                             {product.categoria}
                           </span>
@@ -1483,7 +1501,7 @@ const handleAdminLogin = (e) => {
 
                   <button
                     type="button"
-                    onClick={() => setIsAdminAuthenticated(false)}
+                    onClick={handleAdminLogout}
                     className="px-3 py-2 rounded-xl text-xs font-semibold text-[#6B584C] hover:bg-[#F3EAE2] flex items-center gap-1"
                   >
                     <LogOut className="w-3.5 h-3.5" />
@@ -1526,7 +1544,6 @@ const handleAdminLogin = (e) => {
                 </div>
               </div>
 
-              {/* ABA PEDIDOS */}
               {adminSection === 'resumo' && (
                 <div className="bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-4">
                   <h2 className="text-lg font-bold text-[#4A3B32]">Pedidos e Rastreio</h2>
@@ -1585,7 +1602,6 @@ const handleAdminLogin = (e) => {
                 </div>
               )}
 
-              {/* ABA CATEGORIAS */}
               {adminSection === 'categorias' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <form
@@ -1689,7 +1705,6 @@ const handleAdminLogin = (e) => {
                 </div>
               )}
 
-              {/* ABA PRODUTOS COM CATEGORIAS SINCRONIZADAS, UPLOAD E VARIAÇÕES DINÂMICAS */}
               {adminSection === 'produtos' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <form
@@ -1750,7 +1765,6 @@ const handleAdminLogin = (e) => {
                       />
                     </div>
 
-                    {/* Variações opcionais dinâmicas com dropdown */}
                     <div className="p-3.5 rounded-2xl bg-[#FAF6F2] border border-[#E5D7CA] space-y-3">
                       <div className="flex items-center justify-between gap-2">
                         <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-[#4A3B32]">
@@ -1769,7 +1783,7 @@ const handleAdminLogin = (e) => {
 
                       {newProduct.variacoesAtivas && (
                         <div className="space-y-2.5 pt-2 border-t border-[#E8DBD0]">
-                          {(newProduct.variacoesList || []).map((v, idx) => (
+                          {(Array.isArray(newProduct.variacoesList) ? newProduct.variacoesList : []).map((v, idx) => (
                             <div
                               key={v.id}
                               className="p-2.5 rounded-xl bg-white border border-[#E6D8CC] space-y-2"
@@ -1837,7 +1851,6 @@ const handleAdminLogin = (e) => {
                       )}
                     </div>
 
-                    {/* Upload direto de foto */}
                     <div className="space-y-2">
                       <label className="block text-xs font-semibold">Foto do produto</label>
                       <label className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl border-2 border-dashed border-[#D48C84] bg-[#FAF6F2] hover:bg-[#F4EAE3] cursor-pointer text-xs font-semibold text-[#4A3B32] transition">
@@ -1920,12 +1933,11 @@ const handleAdminLogin = (e) => {
                           className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#FAF6F2] border border-[#E8DBD0]"
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                       <img
+                            <img
                               src={prod.imagem}
                               alt={prod.nome}
                               className="w-12 h-12 rounded-lg object-cover shrink-0"
                             />
-                            
                             <div className="min-w-0">
                               <p className="font-semibold text-sm text-[#4A3B32] truncate">{prod.nome}</p>
                               <p className="text-xs text-[#6B584C]">
@@ -1966,7 +1978,6 @@ const handleAdminLogin = (e) => {
                 </div>
               )}
 
-              {/* ABA CONFIGURAÇÕES */}
               {adminSection === 'config' && (
                 <div className="bg-white rounded-2xl border border-[#E6D8CC] p-6 max-w-2xl space-y-4">
                   <h2 className="text-lg font-bold text-[#4A3B32]">Configurações da Vitrine e Frete</h2>
@@ -2021,7 +2032,7 @@ const handleAdminLogin = (e) => {
         </main>
       )}
 
-     {isCartOpen && (
+      {isCartOpen && (
         <div
           onClick={() => setIsCartOpen(false)}
           className="fixed inset-0 z-40 flex justify-end bg-black/40"
@@ -2151,9 +2162,18 @@ const handleAdminLogin = (e) => {
         </div>
       )}
 
-{isCheckoutOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 border border-[#E6D8CC] shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+      {isCheckoutOpen && (
+        <div
+          onClick={() => {
+            setIsCheckoutOpen(false);
+            setPendingOrder(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 border border-[#E6D8CC] shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
+          >
             <div className="flex items-center justify-between border-b border-[#F3ECE5] pb-3">
               <h2
                 className="text-2xl font-semibold text-[#4A3B32]"
@@ -2222,7 +2242,7 @@ const handleAdminLogin = (e) => {
                   </div>
                 </div>
 
-         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs font-semibold mb-1">CEP</label>
                     <input
@@ -2335,36 +2355,32 @@ const handleAdminLogin = (e) => {
           </span>
           <span>Vitrine artesanal • Supabase + Mercado Pago</span>
         </div>
-
-
-        
       </footer>
 
- {lightboxImage && (
-  <div
-    onClick={() => setLightboxImage(null)}
-    className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4"
-  >
-    <div
-      onClick={(e) => e.stopPropagation()}
-      className="relative max-w-4xl w-full max-h-[90vh] bg-white rounded-2xl p-3 border border-[#E6D8CC] shadow-2xl flex flex-col items-center gap-2"
-    >
-      <button
-        type="button"
-        onClick={() => setLightboxImage(null)}
-        className="self-end px-3 py-1 rounded-lg bg-[#4A3B32] text-[#FAF6F2] text-xs font-semibold hover:bg-[#352922]"
-      >
-        Fechar
-      </button>
-      <img
-        src={lightboxImage.src}
-        alt={lightboxImage.alt}
-        className="max-h-[78vh] w-auto max-w-full object-contain rounded-xl"
-      />
-    </div>
-  </div>
-)}
-      
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-4xl w-full max-h-[90vh] bg-white rounded-2xl p-3 border border-[#E6D8CC] shadow-2xl flex flex-col items-center gap-2"
+          >
+            <button
+              type="button"
+              onClick={() => setLightboxImage(null)}
+              className="self-end px-3 py-1 rounded-lg bg-[#4A3B32] text-[#FAF6F2] text-xs font-semibold hover:bg-[#352922]"
+            >
+              Fechar
+            </button>
+            <img
+              src={lightboxImage.src}
+              alt={lightboxImage.alt}
+              className="max-h-[78vh] w-auto max-w-full object-contain rounded-xl"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
