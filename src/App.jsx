@@ -2151,7 +2151,7 @@ const handleAdminLogin = (e) => {
         </div>
       )}
 
-      {isCheckoutOpen && (
+{isCheckoutOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 border border-[#E6D8CC] shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#F3ECE5] pb-3">
@@ -2160,19 +2160,6 @@ const handleAdminLogin = (e) => {
                 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
               >
                 {pendingOrder ? `Pedido ${pendingOrder.id}` : 'Finalizar Encomenda'}
-              </h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCheckoutOpen(false);
-                  setPendingOrder(null);
-                }}
-                className="p-1.5 rounded-lg hover:bg-[#FAF6F2]"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-              }
               </h2>
               <button
                 type="button"
