@@ -685,12 +685,19 @@ const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
     setIsCheckoutOpen(true);
   };
 
-  const handleCreatePixOrder = async (e) => {
+const handleCreatePixOrder = async (e) => {
     e.preventDefault();
     if (!checkoutForm.clienteNome.trim() || !checkoutForm.clienteWhatsapp.trim()) {
       showToast('Preencha nome e WhatsApp para gerar o pedido');
       return;
     }
+
+    const cleanCep = checkoutForm.clienteCep.replace(/\D/g, '');
+    if (cleanCep.length < 8) {
+      showToast('Por favor, preencha um CEP válido com 8 números para continuar.');
+      return;
+    }
+
     if (!supabase) {
       showToast('Supabase não conectado');
       return;
@@ -712,11 +719,17 @@ const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
         })
       });
 
-      const pixData = await pixRes.json();
+      const rawText = await pixRes.text();
+      let pixData = {};
+      try {
+        pixData = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        throw new Error('Não foi possível conectar ao serviço de Pix no momento. Tente novamente.');
+      }
+
       if (!pixRes.ok) {
         throw new Error(pixData.error || 'Falha ao gerar Pix no Mercado Pago');
       }
-
       const { data: insertedOrder, error: orderErr } = await supabase
         .from('pedidos')
         .insert({
