@@ -1957,9 +1957,15 @@ const handleAdminLogin = (e) => {
         </main>
       )}
 
-      {isCartOpen && (
-        <div className="fixed inset-0 z-40 flex justify-end bg-black/40">
-          <div className="w-full max-w-md bg-[#FAF6F2] h-full shadow-2xl flex flex-col justify-between border-l border-[#E5D7CA]">
+     {isCartOpen && (
+        <div
+          onClick={() => setIsCartOpen(false)}
+          className="fixed inset-0 z-40 flex justify-end bg-black/40"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-[#FAF6F2] h-full shadow-2xl flex flex-col justify-between border-l border-[#E5D7CA]"
+          >
             <div className="p-5 border-b border-[#E5D7CA] flex items-center justify-between bg-white">
               <div className="flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-[#D48C84]" />
