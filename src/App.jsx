@@ -104,6 +104,19 @@ function createNewVariationItem(index = 1) {
 }
 
 function normalizeStoredVariations(productRow) {
+  if (!productRow) return [];
+
+  if (Array.isArray(productRow.variacoesRaw) && productRow.variacoesRaw.length > 0) {
+    return productRow.variacoesRaw.map((v, idx) => ({
+      id: v?.id || `var-${idx + 1}`,
+      titulo: String(v?.titulo || `Opção ${idx + 1}`),
+      opcoesText: Array.isArray(v?.opcoes)
+        ? v.opcoes.join(', ')
+        : String(v?.opcoesText || ''),
+      visivel: v?.visivel !== false
+    }));
+  }
+
   let rawCustom = productRow.variacoes_custom;
   if (typeof rawCustom === 'string') {
     try {
@@ -154,6 +167,38 @@ function normalizeStoredVariations(productRow) {
   }
 
   return [];
+}
+
+function mapProductRowFromDb(p) {
+  const normalizedVars = normalizeStoredVariations(p);
+  const activeVisibleVariations = p.variacoes_ativas
+    ? normalizedVars
+        .filter((v) => v.visivel !== false)
+        .map((v, idx) => ({
+          id: v.id || `var-${idx + 1}`,
+          titulo: (v.titulo || '').trim() || `Opção ${idx + 1}`,
+          opcoes: parseOptionsList(v.opcoesText),
+          visivel: true
+        }))
+        .filter((v) => v.opcoes.length > 0)
+    : [];
+
+  return {
+    id: p.id,
+    nome: p.nome,
+    descricao: p.descricao || '',
+    preco: Number(p.preco),
+    categoria: p.categoria,
+    prazo: p.prazo_producao || '5 dias úteis',
+    imagem:
+      p.imagem_url ||
+      'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80',
+    ativo: p.ativo !== false,
+    variacoesAtivas: Boolean(p.variacoes_ativas),
+    variacoes_custom: p.variacoes_custom || [],
+    variacoesRaw: normalizedVars,
+    variacoesVisiveis: activeVisibleVariations
+  };
 }
 
 function BrandLogo({ size = 'md' }) {
@@ -241,6 +286,7 @@ export default function App() {
   const [loadingData, setLoadingData] = useState(true);
   const [savingAction, setSavingAction] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [loadingEditProduct, setLoadingEditProduct] = useState(false);
 
   const [activeTab, setActiveTab] = useState('vitrine');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -369,38 +415,7 @@ export default function App() {
       }
 
       if (prodRes.data) {
-        setProducts(
-          prodRes.data.map((p) => {
-            const normalizedVars = normalizeStoredVariations(p);
-            const activeVisibleVariations = p.variacoes_ativas
-              ? normalizedVars
-                  .filter((v) => v.visivel !== false)
-                  .map((v, idx) => ({
-                    id: v.id || `var-${idx + 1}`,
-                    titulo: (v.titulo || '').trim() || `Opção ${idx + 1}`,
-                    opcoes: parseOptionsList(v.opcoesText),
-                    visivel: true
-                  }))
-                  .filter((v) => v.opcoes.length > 0)
-              : [];
-
-            return {
-              id: p.id,
-              nome: p.nome,
-              descricao: p.descricao || '',
-              preco: Number(p.preco),
-              categoria: p.categoria,
-              prazo: p.prazo_producao || '5 dias úteis',
-              imagem:
-                p.imagem_url ||
-                'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80',
-              ativo: p.ativo !== false,
-              variacoesAtivas: Boolean(p.variacoes_ativas),
-              variacoesRaw: normalizedVars,
-              variacoesVisiveis: activeVisibleVariations
-            };
-          })
-        );
+        setProducts(prodRes.data.map(mapProductRowFromDb));
       }
 
       if (ordRes.data) {
@@ -1001,6 +1016,11 @@ export default function App() {
             'Nenhuma linha foi atualizada no Supabase. Verifique a permissão de UPDATE em produtos.'
           );
         }
+
+        const mappedUpdated = mapProductRowFromDb(updatedRows[0]);
+        setProducts((prev) =>
+          prev.map((item) => (item.id === mappedUpdated.id ? mappedUpdated : item))
+        );
         setEditingProductId(null);
         showToast('Produto atualizado!');
       } else {
@@ -1016,6 +1036,9 @@ export default function App() {
         if (!insertedRows || insertedRows.length === 0) {
           throw new Error('Nenhuma linha foi inserida no Supabase.');
         }
+
+        const mappedInserted = mapProductRowFromDb(insertedRows[0]);
+        setProducts((prev) => [mappedInserted, ...prev]);
         showToast('Produto salvo na vitrine!');
       }
 
@@ -1028,35 +1051,29 @@ export default function App() {
     }
   };
 
-const handleStartEditProduct = async (prod) => {
+  const handleStartEditProduct = async (prod) => {
     setEditingProductId(prod.id);
+    setLoadingEditProduct(true);
 
     let targetProd = products.find((p) => p.id === prod.id) || prod;
 
-    if (supabase) {
-      const { data: freshRow, error } = await supabase
-        .from('produtos')
-        .select('*')
-        .eq('id', prod.id)
-        .single();
+    try {
+      if (supabase) {
+        const { data: freshRow, error } = await supabase
+          .from('produtos')
+          .select('*')
+          .eq('id', prod.id)
+          .single();
 
-      if (!error && freshRow) {
-        const normalizedVars = normalizeStoredVariations(freshRow);
-        targetProd = {
-          id: freshRow.id,
-          nome: freshRow.nome,
-          descricao: freshRow.descricao || '',
-          preco: Number(freshRow.preco),
-          categoria: freshRow.categoria,
-          prazo: freshRow.prazo_producao || '5 dias úteis',
-          imagem:
-            freshRow.imagem_url ||
-            'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80',
-          ativo: freshRow.ativo !== false,
-          variacoesAtivas: Boolean(freshRow.variacoes_ativas),
-          variacoesRaw: normalizedVars
-        };
+        if (!error && freshRow) {
+          targetProd = mapProductRowFromDb(freshRow);
+          setProducts((prev) =>
+            prev.map((item) => (item.id === targetProd.id ? targetProd : item))
+          );
+        }
       }
+    } finally {
+      setLoadingEditProduct(false);
     }
 
     const existingVars = normalizeStoredVariations(targetProd);
@@ -1074,7 +1091,7 @@ const handleStartEditProduct = async (prod) => {
           : DEFAULT_CUSTOM_VARIATIONS.map((v) => ({ ...v }))
     });
   };
-  
+
   const handleToggleProductActive = async (prod) => {
     if (!supabase) return;
     const nextActive = !prod.ativo;
@@ -1782,9 +1799,16 @@ const handleStartEditProduct = async (prod) => {
                     onSubmit={handleSaveProduct}
                     className="bg-white rounded-2xl border border-[#E6D8CC] p-5 space-y-3.5 h-fit"
                   >
-                    <h2 className="text-lg font-bold text-[#4A3B32]">
-                      {editingProductId ? 'Editar Produto' : 'Cadastrar Novo Produto'}
-                    </h2>
+                    <div className="flex items-center justify-between gap-2">
+                      <h2 className="text-lg font-bold text-[#4A3B32]">
+                        {editingProductId ? 'Editar Produto' : 'Cadastrar Novo Produto'}
+                      </h2>
+                      {loadingEditProduct && (
+                        <span className="text-[11px] font-semibold text-[#6A8E96]">
+                          Sincronizando...
+                        </span>
+                      )}
+                    </div>
 
                     <div>
                       <label className="block text-xs font-semibold mb-1">Nome do item</label>
@@ -1969,7 +1993,7 @@ const handleStartEditProduct = async (prod) => {
                     <div className="flex gap-2 pt-1">
                       <button
                         type="submit"
-                        disabled={savingAction || uploadingImage}
+                        disabled={savingAction || uploadingImage || loadingEditProduct}
                         className="flex-1 bg-[#D48C84] hover:bg-[#c37971] text-white py-2.5 rounded-xl text-xs font-semibold transition disabled:opacity-60"
                       >
                         {savingAction
