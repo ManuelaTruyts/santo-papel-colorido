@@ -260,7 +260,9 @@ export default function App() {
     clienteEmail: '',
     clienteWhatsapp: '',
     clienteCep: '',
-    clienteEndereco: ''
+    clienteEndereco: '',
+    clienteNumero: '',
+    clienteComplemento: ''
   });
   const [lastLookedUpCep, setLastLookedUpCep] = useState('');
   const [lookingUpCep, setLookingUpCep] = useState(false);
@@ -746,6 +748,19 @@ export default function App() {
     setIsCheckoutOpen(true);
   };
 
+  const formatFullDeliveryAddress = () => {
+    const rua = checkoutForm.clienteEndereco.trim();
+    const numero = checkoutForm.clienteNumero.trim();
+    const complemento = checkoutForm.clienteComplemento.trim();
+
+    if (!rua && !numero && !complemento) {
+      return 'Retirada / A combinar';
+    }
+
+    const baseComNumero = rua && numero ? `${rua}, ${numero}` : rua || numero;
+    return complemento ? `${baseComNumero} — ${complemento}` : baseComNumero;
+  };
+
   const handleCreatePixOrder = async (e) => {
     e.preventDefault();
     if (!checkoutForm.clienteNome.trim() || !checkoutForm.clienteWhatsapp.trim()) {
@@ -759,6 +774,11 @@ export default function App() {
       return;
     }
 
+    if (!checkoutForm.clienteNumero.trim()) {
+      showToast('Por favor, preencha o número do endereço.');
+      return;
+    }
+
     if (!supabase) {
       showToast('Supabase não conectado');
       return;
@@ -767,6 +787,7 @@ export default function App() {
     setSavingAction(true);
     const randomNum = Math.floor(1050 + Math.random() * 8900);
     const codigoPedido = `PED-${randomNum}`;
+    const enderecoCompleto = formatFullDeliveryAddress();
 
     try {
       const pixRes = await fetch('/api/criar-pix', {
@@ -799,7 +820,7 @@ export default function App() {
           cliente_nome: checkoutForm.clienteNome.trim(),
           cliente_whatsapp: checkoutForm.clienteWhatsapp.trim(),
           cliente_cep: checkoutForm.clienteCep.trim() || '12300-000',
-          cliente_endereco: checkoutForm.clienteEndereco.trim() || 'Retirada / A combinar',
+          cliente_endereco: enderecoCompleto,
           valor_produtos: subtotal,
           valor_frete: freteAtual,
           valor_total: totalCarrinho,
@@ -2269,7 +2290,41 @@ export default function App() {
                         setIsAddressManuallyEdited(val.trim() !== '');
                         setCheckoutForm({ ...checkoutForm, clienteEndereco: val });
                       }}
-                      placeholder="Rua, bairro, cidade — complete com número e complemento"
+                      placeholder="Rua, bairro, cidade"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold mb-1">Número</label>
+                    <input
+                      type="text"
+                      required
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={checkoutForm.clienteNumero}
+                      onChange={(e) => {
+                        const onlyDigits = e.target.value.replace(/\D/g, '');
+                        setCheckoutForm({ ...checkoutForm, clienteNumero: onlyDigits });
+                      }}
+                      placeholder="Ex.: 120"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold mb-1">
+                      Complemento <span className="text-[#8B7669] font-normal">(opcional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={checkoutForm.clienteComplemento}
+                      onChange={(e) =>
+                        setCheckoutForm({ ...checkoutForm, clienteComplemento: e.target.value })
+                      }
+                      placeholder="Ex.: Apto 42, Bloco B, Cond. Sol"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
                     />
                   </div>
