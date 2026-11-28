@@ -2257,7 +2257,7 @@ export default function App() {
         </div>
       )}
 
-      {isCheckoutOpen && (
+{isCheckoutOpen && (
         <div
           onClick={() => {
             setIsCheckoutOpen(false);
@@ -2424,7 +2424,7 @@ export default function App() {
                   <span>Status: {pendingOrder.status}</span>
                 </div>
 
-               {pendingOrder.qrCodeBase64 ? (
+                {pendingOrder.qrCodeBase64 ? (
                   <div className="mx-auto w-48 h-48 rounded-2xl border border-[#E6D8CC] bg-white p-2 flex items-center justify-center shadow-sm">
                     <img
                       src={`data:image/png;base64,${pendingOrder.qrCodeBase64}`}
@@ -2438,7 +2438,7 @@ export default function App() {
                   </div>
                 )}
 
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <p className="text-base font-bold text-[#4A3B32]">
                     Valor: {formatBRL(pendingOrder.total)}
                   </p>
@@ -2446,15 +2446,6 @@ export default function App() {
                     Loja: <strong className="text-[#4A3B32]">{config.nomeLoja}</strong> • Recebedor no banco: titular do ateliê (Mônica)
                   </p>
                 </div>
-                ) : (
-                  <div className="mx-auto w-40 h-40 rounded-2xl border-2 border-dashed border-[#C99649] bg-[#FAF6F2] flex flex-col items-center justify-center p-3">
-                    <QrCode className="w-20 h-20 text-[#4A3B32]" />
-                  </div>
-                )}
-
-                <p className="text-base font-bold text-[#4A3B32]">
-                  Valor: {formatBRL(pendingOrder.total)}
-                </p>
 
                 <button
                   type="button"
