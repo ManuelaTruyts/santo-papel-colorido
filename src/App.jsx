@@ -203,7 +203,58 @@ const emptyProductForm = (defaultCat = '') => ({
   variacoesList: DEFAULT_CUSTOM_VARIATIONS.map((v) => ({ ...v }))
 });
 
+async function lookupCepAddress(rawCep) {
+  const digits = String(rawCep || '').replace(/\D/g, '');
+  if (digits.length !== 8) return null;
+
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.erro) return null;
+
+    const parts = [
+      data.logradouro,
+      data.bairro ? `${data.bairro}` : '',
+      data.localidade && data.uf ? `${data.localidade} - ${data.uf}` : data.localidade
+    ].filter(Boolean);
+
+    return parts.join(', ');
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
+
+  const [lastLookedUpCep, setLastLookedUpCep] = useState('');
+  const [lookingUpCep, setLookingUpCep] = useState(false);
+
+  useEffect(() => {
+    const digits = checkoutForm.clienteCep.replace(/\D/g, '');
+    if (digits.length !== 8 || digits === lastLookedUpCep) return;
+
+    let cancelled = false;
+    setLookingUpCep(true);
+
+    lookupCepAddress(digits).then((enderecoEncontrado) => {
+      if (cancelled) return;
+      setLookingUpCep(false);
+      setLastLookedUpCep(digits);
+
+      if (enderecoEncontrado) {
+        setCheckoutForm((prev) => ({
+          ...prev,
+          clienteEndereco: enderecoEncontrado
+        }));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutForm.clienteCep, lastLookedUpCep]);
+  
   const [products, setProducts] = useState([]);
   const [categoriesList, setCategoriesList] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -2108,7 +2159,26 @@ const handleAdminLogin = (e) => {
                 className="text-2xl font-semibold text-[#4A3B32]"
                 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
               >
-                {pendingOrder ? `Pedido ${pendingOrder.id}` : 'Finalizar Encomenda'}
+                {pendingOrder ? `Pedido ${pendingOrder.id}` : 'Finalizar Encomenda'
+                
+                <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold mb-1">
+                      Endereço de entrega{' '}
+                      {lookingUpCep && (
+                        <span className="text-[#6A8E96] font-normal">(buscando logradouro...)</span>
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      value={checkoutForm.clienteEndereco}
+                      onChange={(e) =>
+                        setCheckoutForm({ ...checkoutForm, clienteEndereco: e.target.value })
+                      }
+                      placeholder="Rua, bairro, cidade — complete com número e complemento"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DFCFC1] bg-[#FAF6F2] text-sm"
+                    />
+                  </div>
+              }
               </h2>
               <button
                 type="button"
