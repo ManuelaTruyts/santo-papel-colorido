@@ -1028,25 +1028,52 @@ export default function App() {
     }
   };
 
-const handleStartEditProduct = (prod) => {
-    const latestProd = products.find((p) => p.id === prod.id) || prod;
-    setEditingProductId(latestProd.id);
-    const existingVars = normalizeStoredVariations(latestProd);
+const handleStartEditProduct = async (prod) => {
+    setEditingProductId(prod.id);
+
+    let targetProd = products.find((p) => p.id === prod.id) || prod;
+
+    if (supabase) {
+      const { data: freshRow, error } = await supabase
+        .from('produtos')
+        .select('*')
+        .eq('id', prod.id)
+        .single();
+
+      if (!error && freshRow) {
+        const normalizedVars = normalizeStoredVariations(freshRow);
+        targetProd = {
+          id: freshRow.id,
+          nome: freshRow.nome,
+          descricao: freshRow.descricao || '',
+          preco: Number(freshRow.preco),
+          categoria: freshRow.categoria,
+          prazo: freshRow.prazo_producao || '5 dias úteis',
+          imagem:
+            freshRow.imagem_url ||
+            'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80',
+          ativo: freshRow.ativo !== false,
+          variacoesAtivas: Boolean(freshRow.variacoes_ativas),
+          variacoesRaw: normalizedVars
+        };
+      }
+    }
+
+    const existingVars = normalizeStoredVariations(targetProd);
     setNewProduct({
-      nome: latestProd.nome,
-      descricao: latestProd.descricao,
-      preco: String(latestProd.preco),
-      categoria: latestProd.categoria,
-      prazo: latestProd.prazo,
-      imagem: latestProd.imagem,
-      variacoesAtivas: Boolean(latestProd.variacoesAtivas),
+      nome: targetProd.nome,
+      descricao: targetProd.descricao,
+      preco: String(targetProd.preco),
+      categoria: targetProd.categoria,
+      prazo: targetProd.prazo,
+      imagem: targetProd.imagem,
+      variacoesAtivas: Boolean(targetProd.variacoesAtivas),
       variacoesList:
         existingVars.length > 0
           ? existingVars.map((v) => ({ ...v }))
           : DEFAULT_CUSTOM_VARIATIONS.map((v) => ({ ...v }))
     });
   };
-
   
   const handleToggleProductActive = async (prod) => {
     if (!supabase) return;
